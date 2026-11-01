@@ -3,7 +3,11 @@ using Dragonfly44.Application.Services;
 using Dragonfly44.Infrastructure.DependencyInjection;
 using Dragonfly44.Infrastructure.Exceptions;
 using Dragonfly44.Infrastructure.Logging;
+using Dragonfly44.Presentation.Input;
+using Dragonfly44.Presentation.Rendering;
+using Dragonfly44.Presentation.Services;
 using Dragonfly44.Presentation.ViewModels;
+using Dragonfly44.Presentation.Windowing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -45,6 +49,27 @@ public partial class App : Microsoft.UI.Xaml.Application
             .ConfigureServices((context, services) =>
             {
                 services.AddDragonflyInfrastructure(context.Configuration);
+
+                // Application & Window Services (Phase 2)
+                services.AddSingleton<ISettingsService, SettingsService>();
+                services.AddSingleton<IWindowStateService, WindowStateService>();
+                services.AddSingleton<INotificationService, NotificationService>();
+                services.AddSingleton<INavigationService, NavigationService>();
+                services.AddSingleton<IDialogService, DialogService>();
+                services.AddSingleton<IThemeService, ThemeService>();
+
+                // Input & Interaction Services (Phase 2)
+                services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();
+                services.AddSingleton<IFocusService, FocusService>();
+                services.AddSingleton<IClipboardService, ClipboardService>();
+                services.AddSingleton<IDragDropService, DragDropCoordinator>();
+                services.AddSingleton<InputRouter>();
+
+                // Rendering & Windowing Primitives (Phase 2)
+                services.AddTransient<IWindowController, WindowController>();
+                services.AddTransient<VectorRenderer>();
+
+                // ViewModels & Windows
                 services.AddTransient<MainViewModel>();
                 services.AddTransient<MainWindow>();
             })
@@ -91,6 +116,10 @@ public partial class App : Microsoft.UI.Xaml.Application
 
         try
         {
+            // Load application settings
+            var settingsService = Services.GetRequiredService<ISettingsService>();
+            await settingsService.LoadAsync();
+
             // Initialize Database
             var dbInitializer = Services.GetRequiredService<IDatabaseInitializer>();
             await dbInitializer.InitializeAsync();

@@ -1,0 +1,12 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="ms-appx:///Themes/Tokens.Colors.xaml" />
+        <ResourceDictionary Source="ms-appx:///Themes/Tokens.Typography.xaml" />
+        <ResourceDictionary Source="ms-appx:///Themes/Tokens.Dimensions.xaml" />
+        <ResourceDictionary Source="ms-appx:///Themes/Tokens.Motion.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+</ResourceDictionary>

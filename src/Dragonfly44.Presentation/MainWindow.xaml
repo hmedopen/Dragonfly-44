@@ -5,48 +5,202 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="using:Dragonfly44.Presentation.ViewModels"
+    xmlns:windowing="using:Dragonfly44.Presentation.Windowing"
+    xmlns:controls="using:Dragonfly44.Presentation.Controls"
+    xmlns:rendering="using:Dragonfly44.Presentation.Rendering"
     d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
     mc:Ignorable="d"
-    Title="Dragonfly 44 — Phase 1 Foundation">
+    Title="Dragonfly 44">
 
-    <Grid Padding="32" Background="#1E1E1E">
-        <StackPanel MaxWidth="800" HorizontalAlignment="Left" Spacing="20">
-            <!-- Header -->
-            <StackPanel Spacing="6">
-                <TextBlock Text="Dragonfly 44" FontSize="28" FontWeight="SemiBold" Foreground="#FFFFFF" />
-                <TextBlock Text="Phase 1: Foundation and Architecture Verification" FontSize="16" Foreground="#AAAAAA" />
-            </StackPanel>
+    <!-- Root Container Hosting Custom Chrome, Content, and Dialog Layer -->
+    <Grid x:Name="RootGrid" Background="{StaticResource DragonflyPlaceholderWindowBgBrush}">
+        <Grid.RowDefinitions>
+            <!-- Custom Title Bar Row -->
+            <RowDefinition Height="Auto" />
+            <!-- Main Content Area -->
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-            <!-- Status Banner -->
-            <Border Background="#2D4A22" CornerRadius="6" Padding="14,10">
-                <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Foreground="#D0F0C0" FontWeight="Medium" />
-            </Border>
+        <!-- Workstream 1: Custom Title Bar (Non-client chrome replacement) -->
+        <windowing:CustomTitleBar x:Name="TitleBarControl"
+                                  Grid.Row="0"
+                                  Title="{x:Bind ViewModel.AppTitle, Mode=OneWay}" />
 
-            <!-- Diagnostic Card -->
-            <Border Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="8" Padding="20">
-                <StackPanel Spacing="14">
-                    <TextBlock Text="System Verification" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" />
+        <!-- Main Content Scrollable Viewport -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="24" Spacing="20" MaxWidth="1100" HorizontalAlignment="Left">
 
-                    <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Dependency Injection:" Foreground="#AAAAAA" />
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.DiStatus, Mode=OneWay}" Foreground="#FFFFFF" FontWeight="Medium" />
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Logging Pipeline:" Foreground="#AAAAAA" />
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.LoggingStatus, Mode=OneWay}" Foreground="#FFFFFF" FontWeight="Medium" />
-
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="SQLite Database:" Foreground="#AAAAAA" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.DatabaseStatus, Mode=OneWay}" Foreground="#FFFFFF" FontWeight="Medium" />
-
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Database File:" Foreground="#AAAAAA" />
-                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{x:Bind ViewModel.DatabasePath, Mode=OneWay}" Foreground="#FFFFFF" TextWrapping="Wrap" />
-
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Persisted Projects:" Foreground="#AAAAAA" />
-                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{x:Bind ViewModel.ProjectCount, Mode=OneWay}" Foreground="#4EC9B0" FontWeight="Bold" />
-                    </Grid>
+                <!-- Header & Status Banner -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Dragonfly 44 — Custom UI Architecture"
+                               FontSize="{StaticResource DragonflyPlaceholderFontSizeTitle}"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                    <TextBlock Text="Phase 2 Infrastructure Verification: Custom Windowing, Component Architecture, Design Tokens, Win2D GPU Rendering, Input Routing, and Application Services."
+                               FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                               Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
                 </StackPanel>
-            </Border>
 
-            <TextBlock Text="Waiting for Phase 2 visual direction and workbench specifications." FontSize="12" Foreground="#888888" />
-        </StackPanel>
+                <!-- Status Banner -->
+                <Border Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                        BorderBrush="{StaticResource DragonflyPlaceholderSuccessBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                        Padding="14,10">
+                    <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                               Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}"
+                               FontWeight="Medium" />
+                </Border>
+
+                <!-- Workstream 4: Win2D Rendering Infrastructure Diagnostic -->
+                <rendering:RenderingDiagnosticSurface x:Name="Win2DSurfaceControl" Height="260" />
+
+                <!-- Grid of Technical Verification Cards -->
+                <Grid ColumnDefinitions="*,*">
+                    <Grid.ColumnSpacing>16</Grid.ColumnSpacing>
+
+                    <!-- Column 1: Windowing, DPI & Component Architecture -->
+                    <StackPanel Grid.Column="0" Spacing="16">
+
+                        <!-- Window & DPI Infrastructure Card -->
+                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                BorderThickness="{StaticResource DragonflyBorderThin}"
+                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                Padding="16">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Windowing &amp; DPI Infrastructure"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Window Bounds:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.WindowBoundsText, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Window State:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.WindowStateText, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Display Scale / DPI:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.WindowDpiText, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Multi-Monitor Clamping:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Active (MonitorFromPoint / Bounds Clamped)" Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Custom Component Architecture Card -->
+                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                BorderThickness="{StaticResource DragonflyBorderThin}"
+                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                Padding="16">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Custom Component Architecture"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                <TextBlock Text="Custom controls decoupled from standard WinUI Fluent templates. Driven by VisualStateManager and centralized tokens."
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}"
+                                           TextWrapping="Wrap" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <controls:CustomButton x:Name="NotificationBtn"
+                                                           Content="Trigger In-App Notification"
+                                                           Click="OnTriggerNotificationClicked" />
+
+                                    <controls:CustomButton x:Name="DialogBtn"
+                                                           Content="Trigger Modal Dialog"
+                                                           Click="OnTriggerDialogClicked" />
+                                </StackPanel>
+
+                                <TextBlock Text="{x:Bind ViewModel.LastActionMessage, Mode=OneWay}"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                           Foreground="{StaticResource DragonflyPlaceholderAccentBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+
+                    <!-- Column 2: Input Routing & Phase 1 Foundation -->
+                    <StackPanel Grid.Column="1" Spacing="16">
+
+                        <!-- Input & Keyboard Routing Card -->
+                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                BorderThickness="{StaticResource DragonflyBorderThin}"
+                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                Padding="16">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Input &amp; Shortcut Management"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                <TextBlock Text="Global shortcuts: Ctrl+N (Notification), Ctrl+D (Dialog), F11 (Toggle Maximize)."
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+
+                                <TextBlock Text="Text Editing Conflict Verification:"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                           FontWeight="Medium"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                <TextBox x:Name="TestInputBox"
+                                         PlaceholderText="Type here (typing 'n' or 'd' will NOT trigger shortcuts)..."
+                                         FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
+
+                                <TextBlock Text="Shortcuts are routed through IKeyboardShortcutService with text-editing focus suppression."
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Preserved Phase 1 Foundation Diagnostics Card -->
+                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                BorderThickness="{StaticResource DragonflyBorderThin}"
+                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                Padding="16">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Phase 1 Foundation Diagnostics"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="DI Container:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.DiStatus, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Logging Pipeline:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.LoggingStatus, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="SQLite Database:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.DatabaseStatus, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Database File:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{x:Bind ViewModel.DatabasePath, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" TextWrapping="Wrap" />
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Persisted Projects:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{x:Bind ViewModel.ProjectCount, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}" FontWeight="Bold" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </Grid>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Workstream 2 & 6: Modal Dialog Host Presentation Layer -->
+        <controls:CustomDialogHost x:Name="DialogHostControl"
+                                   Grid.Row="0"
+                                   Grid.RowSpan="2" />
     </Grid>
 </Window>

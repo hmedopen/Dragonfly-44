@@ -1,0 +1,70 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+    ================================================================================
+    DRAGONFLY 44 — TECHNICAL PLACEHOLDER COLOR TOKENS
+    These colors are strictly neutral engineering placeholders for Phase 2 infrastructure.
+    They do NOT represent product-owner approved palette or aesthetic design decisions.
+    ================================================================================
+    -->
+
+    <!-- Base Surface & Background Placeholders -->
+    <Color x:Key="DragonflyPlaceholderWindowBgColor">#141416</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderWindowBgBrush" Color="{StaticResource DragonflyPlaceholderWindowBgColor}" />
+
+    <Color x:Key="DragonflyPlaceholderSurfaceColor">#1E1E22</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderSurfaceBrush" Color="{StaticResource DragonflyPlaceholderSurfaceColor}" />
+
+    <Color x:Key="DragonflyPlaceholderSurfaceSubtleColor">#28282D</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderSurfaceSubtleBrush" Color="{StaticResource DragonflyPlaceholderSurfaceSubtleColor}" />
+
+    <Color x:Key="DragonflyPlaceholderTitleBarBgColor">#101012</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderTitleBarBgBrush" Color="{StaticResource DragonflyPlaceholderTitleBarBgColor}" />
+
+    <!-- Border & Divider Placeholders -->
+    <Color x:Key="DragonflyPlaceholderBorderColor">#383840</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderBorderBrush" Color="{StaticResource DragonflyPlaceholderBorderColor}" />
+
+    <Color x:Key="DragonflyPlaceholderBorderFocusColor">#5C5C68</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderBorderFocusBrush" Color="{StaticResource DragonflyPlaceholderBorderFocusColor}" />
+
+    <!-- Text & Foreground Placeholders -->
+    <Color x:Key="DragonflyPlaceholderTextPrimaryColor">#E6E6EB</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderTextPrimaryBrush" Color="{StaticResource DragonflyPlaceholderTextPrimaryColor}" />
+
+    <Color x:Key="DragonflyPlaceholderTextSecondaryColor">#A2A2AC</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderTextSecondaryBrush" Color="{StaticResource DragonflyPlaceholderTextSecondaryColor}" />
+
+    <Color x:Key="DragonflyPlaceholderTextMutedColor">#70707A</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderTextMutedBrush" Color="{StaticResource DragonflyPlaceholderTextMutedColor}" />
+
+    <!-- Component Interaction State Placeholders -->
+    <Color x:Key="DragonflyPlaceholderHoverColor">#32323A</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderHoverBrush" Color="{StaticResource DragonflyPlaceholderHoverColor}" />
+
+    <Color x:Key="DragonflyPlaceholderPressedColor">#3E3E48</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderPressedBrush" Color="{StaticResource DragonflyPlaceholderPressedColor}" />
+
+    <Color x:Key="DragonflyPlaceholderDisabledColor">#202024</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderDisabledBrush" Color="{StaticResource DragonflyPlaceholderDisabledColor}" />
+
+    <!-- Accent Placeholder (Technical neutral accent) -->
+    <Color x:Key="DragonflyPlaceholderAccentColor">#4A6B82</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderAccentBrush" Color="{StaticResource DragonflyPlaceholderAccentColor}" />
+
+    <!-- Status Indicator Placeholders -->
+    <Color x:Key="DragonflyPlaceholderInfoColor">#3B82F6</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderInfoBrush" Color="{StaticResource DragonflyPlaceholderInfoColor}" />
+
+    <Color x:Key="DragonflyPlaceholderSuccessColor">#10B981</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderSuccessBrush" Color="{StaticResource DragonflyPlaceholderSuccessColor}" />
+
+    <Color x:Key="DragonflyPlaceholderWarningColor">#F59E0B</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderWarningBrush" Color="{StaticResource DragonflyPlaceholderWarningColor}" />
+
+    <Color x:Key="DragonflyPlaceholderErrorColor">#EF4444</Color>
+    <SolidColorBrush x:Key="DragonflyPlaceholderErrorBrush" Color="{StaticResource DragonflyPlaceholderErrorColor}" />
+
+</ResourceDictionary>
