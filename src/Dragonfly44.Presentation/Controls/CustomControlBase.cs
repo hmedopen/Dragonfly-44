@@ -17,6 +17,12 @@ public abstract class CustomControlBase : Control
     protected bool IsPointerOverState => _isPointerOver;
     protected bool IsPressedState => _isPressed;
 
+    protected void SetPressedState(bool isPressed)
+    {
+        _isPressed = isPressed;
+        UpdateVisualStates(true);
+    }
+
     protected CustomControlBase()
     {
         IsEnabledChanged += OnIsEnabledChangedInternal;

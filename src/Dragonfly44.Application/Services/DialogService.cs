@@ -25,6 +25,7 @@ public class DialogService : IDialogService
     private readonly object _syncRoot = new();
     private bool _isProcessing;
     private bool _isShutdown;
+    private DialogRequest? _activeRequest;
 
     private readonly ILogger<DialogService> _logger;
     private IDialogPresenter? _presenter;
@@ -95,6 +96,20 @@ public class DialogService : IDialogService
         {
             request.Registration = cancellationToken.Register(() =>
             {
+                lock (_syncRoot)
+                {
+                    if (_activeRequest == request)
+                    {
+                        try
+                        {
+                            _presenter?.DismissActiveDialog();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error dismissing active dialog on cancellation");
+                        }
+                    }
+                }
                 request.CompletionSource.TrySetResult(DialogResult.Cancel);
             });
         }
@@ -130,10 +145,12 @@ public class DialogService : IDialogService
                 if (_requestQueue.Count == 0 || _isShutdown)
                 {
                     _isProcessing = false;
+                    _activeRequest = null;
                     break;
                 }
 
                 currentRequest = _requestQueue.Dequeue();
+                _activeRequest = currentRequest;
             }
 
             // If cancelled while queued, complete with Cancel and advance to next item
@@ -141,6 +158,10 @@ public class DialogService : IDialogService
             {
                 currentRequest.Registration?.Dispose();
                 currentRequest.CompletionSource.TrySetResult(DialogResult.Cancel);
+                lock (_syncRoot)
+                {
+                    _activeRequest = null;
+                }
                 continue;
             }
 
@@ -149,13 +170,17 @@ public class DialogService : IDialogService
                 _logger.LogWarning("Dialog presentation requested without a registered IDialogPresenter. Returning Cancel.");
                 currentRequest.Registration?.Dispose();
                 currentRequest.CompletionSource.TrySetResult(DialogResult.Cancel);
+                lock (_syncRoot)
+                {
+                    _activeRequest = null;
+                }
                 continue;
             }
 
             try
             {
                 _logger.LogInformation("Presenting queued dialog: '{Title}'", currentRequest.Options.Title);
-                var result = await _presenter.ShowDialogAsync(currentRequest.Options);
+                var result = await _presenter.ShowDialogAsync(currentRequest.Options, currentRequest.CancellationToken);
                 currentRequest.CompletionSource.TrySetResult(result);
             }
             catch (Exception ex)
@@ -166,6 +191,13 @@ public class DialogService : IDialogService
             finally
             {
                 currentRequest.Registration?.Dispose();
+                lock (_syncRoot)
+                {
+                    if (_activeRequest == currentRequest)
+                    {
+                        _activeRequest = null;
+                    }
+                }
             }
         }
     }
@@ -175,7 +207,22 @@ public class DialogService : IDialogService
         lock (_syncRoot)
         {
             _isShutdown = true;
-            _logger.LogInformation("Cancelling all pending dialog requests due to shutdown/reset.");
+            _logger.LogInformation("Cancelling all active and queued dialog requests due to shutdown/reset.");
+
+            if (_activeRequest != null)
+            {
+                try
+                {
+                    _presenter?.DismissActiveDialog();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error dismissing active dialog during CancelAllPendingRequests");
+                }
+                _activeRequest.Registration?.Dispose();
+                _activeRequest.CompletionSource.TrySetResult(DialogResult.Cancel);
+                _activeRequest = null;
+            }
 
             while (_requestQueue.Count > 0)
             {

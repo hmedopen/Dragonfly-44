@@ -7,6 +7,9 @@ namespace Dragonfly44.Presentation.Controls;
 
 public class CustomButton : CustomControlBase
 {
+    private bool _isSpaceKeyDown;
+    private bool _isEnterKeyDown;
+
     public static readonly DependencyProperty ContentProperty =
         DependencyProperty.Register(
             nameof(Content),
@@ -26,7 +29,7 @@ public class CustomButton : CustomControlBase
             nameof(CommandParameter),
             typeof(object),
             typeof(CustomButton),
-            new PropertyMetadata(null));
+            new PropertyMetadata(null, OnCommandParameterChanged));
 
     public object? Content
     {
@@ -52,6 +55,13 @@ public class CustomButton : CustomControlBase
     {
         DefaultStyleKey = typeof(CustomButton);
         IsTabStop = true;
+        IsEnabledChanged += (s, e) =>
+        {
+            if (!IsEnabled)
+            {
+                CancelPendingKeyboardActivation();
+            }
+        };
     }
 
     protected override void OnPointerReleased(PointerRoutedEventArgs e)
@@ -68,10 +78,68 @@ public class CustomButton : CustomControlBase
     protected override void OnKeyDown(KeyRoutedEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Key is VirtualKey.Enter or VirtualKey.Space && IsEnabled)
+
+        if (e.Key == VirtualKey.Space && IsEnabled)
         {
-            PerformClick();
+            if (!_isSpaceKeyDown)
+            {
+                _isSpaceKeyDown = true;
+                SetPressedState(true);
+            }
             e.Handled = true;
+        }
+        else if (e.Key == VirtualKey.Enter && IsEnabled)
+        {
+            // Enter activates once per deliberate activation; holding Enter does not repeat clicks
+            if (!_isEnterKeyDown)
+            {
+                _isEnterKeyDown = true;
+                PerformClick();
+            }
+            e.Handled = true;
+        }
+    }
+
+    protected override void OnKeyUp(KeyRoutedEventArgs e)
+    {
+        base.OnKeyUp(e);
+
+        if (e.Key == VirtualKey.Space)
+        {
+            if (_isSpaceKeyDown)
+            {
+                _isSpaceKeyDown = false;
+                SetPressedState(false);
+                if (IsEnabled)
+                {
+                    PerformClick();
+                }
+                e.Handled = true;
+            }
+        }
+        else if (e.Key == VirtualKey.Enter)
+        {
+            if (_isEnterKeyDown)
+            {
+                _isEnterKeyDown = false;
+                e.Handled = true;
+            }
+        }
+    }
+
+    protected override void OnLostFocus(RoutedEventArgs e)
+    {
+        CancelPendingKeyboardActivation();
+        base.OnLostFocus(e);
+    }
+
+    private void CancelPendingKeyboardActivation()
+    {
+        if (_isSpaceKeyDown || _isEnterKeyDown)
+        {
+            _isSpaceKeyDown = false;
+            _isEnterKeyDown = false;
+            SetPressedState(false);
         }
     }
 
@@ -96,12 +164,25 @@ public class CustomButton : CustomControlBase
             if (e.NewValue is ICommand newCommand)
             {
                 newCommand.CanExecuteChanged += button.OnCanExecuteChanged;
-                button.IsEnabled = newCommand.CanExecute(button.CommandParameter);
             }
+            button.UpdateCanExecute();
+        }
+    }
+
+    private static void OnCommandParameterChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is CustomButton button)
+        {
+            button.UpdateCanExecute();
         }
     }
 
     private void OnCanExecuteChanged(object? sender, EventArgs e)
+    {
+        UpdateCanExecute();
+    }
+
+    public void UpdateCanExecute()
     {
         if (Command != null)
         {

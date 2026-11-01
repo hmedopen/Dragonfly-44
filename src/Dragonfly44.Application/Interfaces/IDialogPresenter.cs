@@ -4,5 +4,6 @@ namespace Dragonfly44.Application.Interfaces;
 
 public interface IDialogPresenter
 {
-    Task<DialogResult> ShowDialogAsync(DialogOptions options);
+    Task<DialogResult> ShowDialogAsync(DialogOptions options, CancellationToken cancellationToken = default);
+    void DismissActiveDialog();
 }

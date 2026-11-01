@@ -14,6 +14,7 @@ namespace Dragonfly44.Presentation.Windowing;
 public class WindowController : IWindowController
 {
     private readonly IWindowStateService _windowStateService;
+    private readonly IDialogService _dialogService;
     private readonly ILogger<WindowController> _logger;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
 
@@ -37,9 +38,11 @@ public class WindowController : IWindowController
 
     public WindowController(
         IWindowStateService windowStateService,
+        IDialogService dialogService,
         ILogger<WindowController> logger)
     {
         _windowStateService = windowStateService;
+        _dialogService = dialogService;
         _logger = logger;
     }
 
@@ -122,17 +125,25 @@ public class WindowController : IWindowController
             return;
         }
 
-        // Synchronously cancel initial close so we can complete async state persistence
+        // Synchronously cancel initial close so we can complete async state persistence and dialog cleanup
         args.Cancel = true;
-        _logger.LogInformation("Controlled application shutdown initiated. Awaiting window state persistence...");
+        _logger.LogInformation("Controlled application shutdown initiated. Dismissing pending dialogs and awaiting state persistence...");
 
         try
         {
-            await SaveCurrentStateAsync();
+            // Cancel any active and queued dialogs cleanly
+            _dialogService.CancelAllPendingRequests();
+
+            // Await window placement persistence
+            var saved = await SaveCurrentStateAsync();
+            if (!saved)
+            {
+                _logger.LogWarning("Window state save was not completed successfully; proceeding with close sequence.");
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error during shutdown window state save");
+            _logger.LogError(ex, "Unexpected error during shutdown sequence; proceeding with close.");
         }
         finally
         {
@@ -141,7 +152,7 @@ public class WindowController : IWindowController
             // Close the window on the UI thread to finalize exit
             if (_window != null)
             {
-                _window.DispatcherQueue?.TryEnqueue(() =>
+                var enqueued = _window.DispatcherQueue?.TryEnqueue(() =>
                 {
                     try
                     {
@@ -149,9 +160,22 @@ public class WindowController : IWindowController
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error finalizing window close");
+                        _logger.LogError(ex, "Error finalizing window close on DispatcherQueue");
                     }
-                });
+                }) ?? false;
+
+                if (!enqueued)
+                {
+                    _logger.LogWarning("DispatcherQueue.TryEnqueue failed or unavailable. Falling back to direct window Close().");
+                    try
+                    {
+                        _window.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error during direct window close fallback");
+                    }
+                }
             }
         }
     }
@@ -228,7 +252,7 @@ public class WindowController : IWindowController
         }
     }
 
-    public async Task SaveCurrentStateAsync()
+    public async Task<bool> SaveCurrentStateAsync()
     {
         // Guard against competing saves
         await _saveLock.WaitAsync();
@@ -241,21 +265,17 @@ public class WindowController : IWindowController
 
             await _windowStateService.SaveStateAsync();
             _logger.LogInformation("Persisted window state successfully before exit: {@Bounds}", boundsToPersist);
+            return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save window state");
-            // Do not throw to avoid crashing application exit
+            _logger.LogError(ex, "Failed to persist window state during shutdown");
+            return false;
         }
         finally
         {
             _saveLock.Release();
         }
-    }
-
-    public void SaveCurrentState()
-    {
-        _ = SaveCurrentStateAsync();
     }
 
     public void RestorePlacement(WindowBounds? bounds)
@@ -334,6 +354,7 @@ public class WindowController : IWindowController
         {
             try
             {
+                _dialogService.CancelAllPendingRequests();
                 await SaveCurrentStateAsync();
             }
             finally

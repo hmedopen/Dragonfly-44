@@ -15,13 +15,14 @@ public class DialogConcurrencyTests
         public List<DialogOptions> PresentedDialogs { get; } = new();
         public int ConcurrentlyActiveDialogs { get; private set; }
         public int MaxConcurrentDialogsObserved { get; private set; }
+        public bool DismissActiveDialogCalled { get; private set; }
 
         public void EnqueueResponse(Func<DialogOptions, Task<DialogResult>> responseFunc)
         {
             _responses.Enqueue(responseFunc);
         }
 
-        public async Task<DialogResult> ShowDialogAsync(DialogOptions options)
+        public async Task<DialogResult> ShowDialogAsync(DialogOptions options, CancellationToken cancellationToken = default)
         {
             PresentedDialogs.Add(options);
             ConcurrentlyActiveDialogs++;
@@ -44,6 +45,11 @@ public class DialogConcurrencyTests
             {
                 ConcurrentlyActiveDialogs--;
             }
+        }
+
+        public void DismissActiveDialog()
+        {
+            DismissActiveDialogCalled = true;
         }
     }
 
@@ -197,6 +203,31 @@ public class DialogConcurrencyTests
     }
 
     [Fact]
+    public async Task ShowCustomDialogAsync_WhenActiveRequestIsCancelled_ShouldDismissActivePresenterDialog()
+    {
+        var presenter = new MockDialogPresenter();
+        var service = new DialogService(NullLogger<DialogService>.Instance);
+        service.RegisterPresenter(presenter);
+
+        var tcs1 = new TaskCompletionSource<DialogResult>();
+        presenter.EnqueueResponse(_ => tcs1.Task);
+
+        using var cts = new CancellationTokenSource();
+        var task = service.ShowConfirmationAsync("Active Dialog", "Message", cancellationToken: cts.Token);
+
+        await Task.Yield();
+        presenter.DismissActiveDialogCalled.Should().BeFalse();
+
+        // Act: cancel the active dialog
+        cts.Cancel();
+
+        // Assert: DismissActiveDialog should be invoked on presenter
+        presenter.DismissActiveDialogCalled.Should().BeTrue("Cancellation of an active request must physically dismiss the active dialog");
+        var result = await task;
+        result.Should().Be(DialogResult.Cancel);
+    }
+
+    [Fact]
     public async Task ShowCustomDialogAsync_WhenPresenterThrows_ShouldNotLeaveSubsequentCallersWaiting()
     {
         var presenter = new MockDialogPresenter();
@@ -219,7 +250,7 @@ public class DialogConcurrencyTests
     }
 
     [Fact]
-    public async Task CancelAllPendingRequests_OnShutdown_ShouldUnblockAllCallersSafely()
+    public async Task CancelAllPendingRequests_OnShutdown_ShouldDismissActiveAndCancelAllQueuedCallers()
     {
         var presenter = new MockDialogPresenter();
         var service = new DialogService(NullLogger<DialogService>.Instance);
@@ -234,19 +265,22 @@ public class DialogConcurrencyTests
 
         await Task.Yield();
 
-        // Shutdown called: cancel all pending
+        // Shutdown called: cancel all active and pending
         service.CancelAllPendingRequests();
 
+        presenter.DismissActiveDialogCalled.Should().BeTrue("Active dialog must be dismissed upon CancelAllPendingRequests");
+
+        var result1 = await task1;
         var result2 = await task2;
         var result3 = await task3;
 
-        result2.Should().Be(DialogResult.Cancel, "Queued callers must be unblocked on shutdown");
-        result3.Should().Be(DialogResult.Cancel, "Queued callers must be unblocked on shutdown");
-
-        // Complete the active one as well
-        tcs1.SetResult(DialogResult.Cancel);
-        var result1 = await task1;
         result1.Should().Be(DialogResult.Cancel);
+        result2.Should().Be(DialogResult.Cancel);
+        result3.Should().Be(DialogResult.Cancel);
+
+        // New requests after shutdown should be rejected immediately
+        var newTask = await service.ShowConfirmationAsync("Post-Shutdown", "Message");
+        newTask.Should().Be(DialogResult.Cancel, "New dialog requests after shutdown must be rejected immediately");
     }
 
     [Fact]

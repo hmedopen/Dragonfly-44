@@ -130,15 +130,15 @@ public class WindowStateServiceTests
     }
 
     [Fact]
-    public async Task SaveStateAsync_WhenSettingsSaveThrows_ShouldCatchGracefullyWithoutCrashing()
+    public async Task SaveStateAsync_WhenSettingsSaveThrows_ShouldPropagateException()
     {
         var settings = new InMemorySettingsService { ShouldThrowOnSave = true };
         var service = new WindowStateService(settings, NullLogger<WindowStateService>.Instance);
 
         service.UpdateBounds(100, 100, 1280, 800);
 
-        // Act: should not throw exception or crash
+        // Act & Assert: SaveStateAsync must propagate save failure so caller can observe it
         var act = async () => await service.SaveStateAsync();
-        await act.Should().NotThrowAsync("Save failures must be handled safely without crashing application exit");
+        await act.Should().ThrowAsync<IOException>("Save failures must be observable to callers");
     }
 }

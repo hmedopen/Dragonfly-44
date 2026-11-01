@@ -36,6 +36,5 @@ public interface IWindowController
     Task CloseAsync();
     void SetBounds(int x, int y, int width, int height);
     void RestorePlacement(WindowBounds? bounds);
-    void SaveCurrentState();
-    Task SaveCurrentStateAsync();
+    Task<bool> SaveCurrentStateAsync();
 }

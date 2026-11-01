@@ -7,8 +7,8 @@ namespace Dragonfly44.Presentation.Controls;
 
 public class CustomDialogHost : ContentControl, IDialogPresenter
 {
-    private readonly Queue<(DialogOptions Options, TaskCompletionSource<DialogResult> Tcs)> _dialogQueue = new();
     private TaskCompletionSource<DialogResult>? _currentDialogTcs;
+    private CancellationTokenRegistration? _currentCancellationReg;
 
     private CustomButton? _primaryButton;
     private CustomButton? _secondaryButton;
@@ -101,15 +101,7 @@ public class CustomDialogHost : ContentControl, IDialogPresenter
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        // Cancel any pending dialog callers safely
-        _currentDialogTcs?.TrySetResult(DialogResult.Cancel);
-        _currentDialogTcs = null;
-
-        while (_dialogQueue.Count > 0)
-        {
-            var (_, pendingTcs) = _dialogQueue.Dequeue();
-            pendingTcs.TrySetResult(DialogResult.Cancel);
-        }
+        DismissActiveDialog();
     }
 
     protected override void OnApplyTemplate()
@@ -144,26 +136,42 @@ public class CustomDialogHost : ContentControl, IDialogPresenter
         Visibility = IsOpen ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public Task<DialogResult> ShowDialogAsync(DialogOptions options) => ShowAsync(options);
-
-    public Task<DialogResult> ShowAsync(DialogOptions options)
+    public Task<DialogResult> ShowDialogAsync(DialogOptions options, CancellationToken cancellationToken = default)
     {
-        var tcs = new TaskCompletionSource<DialogResult>();
-
-        // If a dialog is already showing, queue this request
-        if (IsOpen)
+        if (DispatcherQueue != null && !DispatcherQueue.HasThreadAccess)
         {
-            _dialogQueue.Enqueue((options, tcs));
+            var tcs = new TaskCompletionSource<DialogResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                _ = ShowDialogCoreAsync(options, cancellationToken).ContinueWith(t =>
+                {
+                    if (t.IsFaulted) tcs.TrySetException(t.Exception!);
+                    else if (t.IsCanceled) tcs.TrySetCanceled();
+                    else tcs.TrySetResult(t.Result);
+                });
+            });
             return tcs.Task;
         }
 
-        DisplayDialog(options, tcs);
-        return tcs.Task;
+        return ShowDialogCoreAsync(options, cancellationToken);
     }
 
-    private void DisplayDialog(DialogOptions options, TaskCompletionSource<DialogResult> tcs)
+    private Task<DialogResult> ShowDialogCoreAsync(DialogOptions options, CancellationToken cancellationToken)
     {
+        // Cancel any lingering earlier dialog
+        _currentCancellationReg?.Dispose();
+        _currentDialogTcs?.TrySetResult(DialogResult.Cancel);
+
+        var tcs = new TaskCompletionSource<DialogResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         _currentDialogTcs = tcs;
+
+        if (cancellationToken.CanBeCanceled)
+        {
+            _currentCancellationReg = cancellationToken.Register(() =>
+            {
+                DismissActiveDialog();
+            });
+        }
 
         DialogTitle = options.Title;
         DialogMessage = options.Message;
@@ -172,6 +180,30 @@ public class CustomDialogHost : ContentControl, IDialogPresenter
         CancelButtonText = options.CloseButtonText ?? "Cancel";
 
         IsOpen = true;
+        return tcs.Task;
+    }
+
+    public void DismissActiveDialog()
+    {
+        void Dismiss()
+        {
+            _currentCancellationReg?.Dispose();
+            _currentCancellationReg = null;
+
+            var tcs = _currentDialogTcs;
+            _currentDialogTcs = null;
+            IsOpen = false;
+            tcs?.TrySetResult(DialogResult.Cancel);
+        }
+
+        if (DispatcherQueue != null && !DispatcherQueue.HasThreadAccess)
+        {
+            DispatcherQueue.TryEnqueue(Dismiss);
+        }
+        else
+        {
+            Dismiss();
+        }
     }
 
     private void OnPrimaryClicked(object sender, RoutedEventArgs e)
@@ -191,16 +223,12 @@ public class CustomDialogHost : ContentControl, IDialogPresenter
 
     private void CloseWithResult(DialogResult result)
     {
+        _currentCancellationReg?.Dispose();
+        _currentCancellationReg = null;
+
         var tcs = _currentDialogTcs;
         _currentDialogTcs = null;
         IsOpen = false;
         tcs?.TrySetResult(result);
-
-        // Process next queued dialog if any
-        if (_dialogQueue.Count > 0)
-        {
-            var (nextOptions, nextTcs) = _dialogQueue.Dequeue();
-            DisplayDialog(nextOptions, nextTcs);
-        }
     }
 }

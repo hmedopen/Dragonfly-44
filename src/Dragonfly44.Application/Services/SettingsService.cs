@@ -11,13 +11,19 @@ public class SettingsService : ISettingsService
     private readonly Dictionary<string, JsonElement> _settings = new();
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
-    public SettingsService(ILogger<SettingsService> logger)
+    public SettingsService(ILogger<SettingsService> logger, string? settingsFilePath = null)
     {
         _logger = logger;
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var settingsDir = Path.Combine(localAppData, "Dragonfly44");
-        Directory.CreateDirectory(settingsDir);
-        _settingsFilePath = Path.Combine(settingsDir, "settings.json");
+        if (!string.IsNullOrEmpty(settingsFilePath))
+        {
+            _settingsFilePath = settingsFilePath;
+        }
+        else
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var settingsDir = Path.Combine(localAppData, "Dragonfly44");
+            _settingsFilePath = Path.Combine(settingsDir, "settings.json");
+        }
     }
 
     public T Get<T>(string key, T defaultValue)
@@ -94,6 +100,7 @@ public class SettingsService : ISettingsService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load settings from {Path}", _settingsFilePath);
+            throw;
         }
         finally
         {
@@ -104,8 +111,15 @@ public class SettingsService : ISettingsService
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
         await _semaphore.WaitAsync(cancellationToken);
+        string? tempFilePath = null;
         try
         {
+            var dir = Path.GetDirectoryName(_settingsFilePath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
             Dictionary<string, JsonElement> copy;
             lock (_settings)
             {
@@ -114,12 +128,37 @@ public class SettingsService : ISettingsService
 
             var options = new JsonSerializerOptions { WriteIndented = true };
             var json = JsonSerializer.Serialize(copy, options);
-            await File.WriteAllTextAsync(_settingsFilePath, json, cancellationToken);
-            _logger.LogDebug("Saved settings to {Path}", _settingsFilePath);
+
+            // Write through a unique temporary file in the same directory
+            tempFilePath = Path.Combine(dir ?? string.Empty, $"settings_{Guid.NewGuid():N}.tmp");
+
+            await File.WriteAllTextAsync(tempFilePath, json, cancellationToken);
+
+            // Safe atomic replacement preserving existing file on failure
+            File.Move(tempFilePath, _settingsFilePath, overwrite: true);
+            tempFilePath = null; // Successfully moved
+
+            _logger.LogDebug("Atomically saved settings to {Path}", _settingsFilePath);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save settings to {Path}", _settingsFilePath);
+
+            // Clean up temporary file if write or replace failed
+            if (tempFilePath != null && File.Exists(tempFilePath))
+            {
+                try
+                {
+                    File.Delete(tempFilePath);
+                }
+                catch
+                {
+                    // Ignore temp file cleanup errors
+                }
+            }
+
+            // Propagate exception so callers can observe save failures
+            throw;
         }
         finally
         {

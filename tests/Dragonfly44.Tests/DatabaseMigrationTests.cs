@@ -94,6 +94,48 @@ public class DatabaseMigrationTests : IDisposable
     }
 
     [Fact]
+    public async Task UpToDateDatabase_ShouldNotCreateBackup_OnStartup()
+    {
+        var dbPath = CreateTempDbPath();
+        var options = new DbContextOptionsBuilder<Dragonfly44DbContext>()
+            .UseSqlite($"Data Source={dbPath}", b => b.MigrationsAssembly(typeof(Dragonfly44DbContext).Assembly.FullName))
+            .Options;
+
+        // 1. Initial startup on fresh db creates schema and history
+        using (var initialContext = new Dragonfly44DbContext(options))
+        {
+            var initializer = new SqliteDatabaseInitializer(
+                initialContext,
+                Options.Create(new DatabaseOptions { ConnectionString = $"Data Source={dbPath}" }),
+                Options.Create(new StorageOptions { AppDataDirectory = Path.GetDirectoryName(dbPath)! }),
+                NullLogger<SqliteDatabaseInitializer>.Instance);
+
+            await initializer.InitializeAsync();
+        }
+
+        var dir = Path.GetDirectoryName(dbPath)!;
+        var baseName = Path.GetFileName(dbPath);
+        var initialBackups = Directory.GetFiles(dir, $"{baseName}.bak_*");
+        initialBackups.Should().BeEmpty("Fresh database creation does not need pre-migration backup of old user data");
+
+        // 2. Subsequent normal startup on up-to-date database
+        using (var secondContext = new Dragonfly44DbContext(options))
+        {
+            var initializer = new SqliteDatabaseInitializer(
+                secondContext,
+                Options.Create(new DatabaseOptions { ConnectionString = $"Data Source={dbPath}" }),
+                Options.Create(new StorageOptions { AppDataDirectory = Path.GetDirectoryName(dbPath)! }),
+                NullLogger<SqliteDatabaseInitializer>.Instance);
+
+            await initializer.InitializeAsync();
+        }
+
+        // Assert: NO backup should be created on normal startup when no migrations are pending
+        var subsequentBackups = Directory.GetFiles(dir, $"{baseName}.bak_*");
+        subsequentBackups.Should().BeEmpty("Do not create a full database backup on every application startup when up to date");
+    }
+
+    [Fact]
     public async Task ExistingEnsureCreatedDatabase_InitializeAsync_ShouldBootstrapHistoryAndPreserveData()
     {
         var dbPath = CreateTempDbPath();
@@ -160,14 +202,14 @@ public class DatabaseMigrationTests : IDisposable
     }
 
     [Fact]
-    public async Task ExistingDatabase_ShouldCreateBackup_BeforeSchemaModification()
+    public async Task ExistingLegacyDatabase_ShouldCreateBackup_BeforeSchemaModification()
     {
         var dbPath = CreateTempDbPath();
         var options = new DbContextOptionsBuilder<Dragonfly44DbContext>()
             .UseSqlite($"Data Source={dbPath}", b => b.MigrationsAssembly(typeof(Dragonfly44DbContext).Assembly.FullName))
             .Options;
 
-        // 1. Create initial database with user data
+        // 1. Create legacy database with user data
         using (var legacyContext = new Dragonfly44DbContext(options))
         {
             await legacyContext.Database.EnsureCreatedAsync();
@@ -181,7 +223,7 @@ public class DatabaseMigrationTests : IDisposable
             await legacyContext.SaveChangesAsync();
         }
 
-        // 2. Run initializer
+        // 2. Run initializer (legacy transition triggers backup)
         using (var context = new Dragonfly44DbContext(options))
         {
             var initializer = new SqliteDatabaseInitializer(
@@ -276,7 +318,7 @@ public class DatabaseMigrationTests : IDisposable
         {
             await rawContext.Database.EnsureCreatedAsync();
 
-            // Drop RootDirectory column by recreating Projects table without it
+            // Recreate Projects table without RootDirectory
             var conn = rawContext.Database.GetDbConnection();
             await conn.OpenAsync();
             using var cmd = conn.CreateCommand();
@@ -311,8 +353,146 @@ public class DatabaseMigrationTests : IDisposable
             // Act & Assert
             var act = async () => await initializer.InitializeAsync();
             var ex = await act.Should().ThrowAsync<IncompatibleDatabaseSchemaException>();
-            ex.Which.Message.Should().Contain("Table 'Projects' is missing required columns");
-            ex.Which.Message.Should().Contain("RootDirectory");
+            ex.Which.Message.Should().Contain("Table 'Projects' is missing column 'RootDirectory'");
+        }
+    }
+
+    [Fact]
+    public async Task LegacyDatabase_WithMismatchedColumnType_ShouldAbortSafely()
+    {
+        var dbPath = CreateTempDbPath();
+        var options = new DbContextOptionsBuilder<Dragonfly44DbContext>()
+            .UseSqlite($"Data Source={dbPath}", b => b.MigrationsAssembly(typeof(Dragonfly44DbContext).Assembly.FullName))
+            .Options;
+
+        // 1. Create tables with Status as TEXT instead of INTEGER
+        using (var rawContext = new Dragonfly44DbContext(options))
+        {
+            await rawContext.Database.EnsureCreatedAsync();
+
+            var conn = rawContext.Database.GetDbConnection();
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                PRAGMA foreign_keys = OFF;
+                CREATE TABLE ""Chapters_Old"" (
+                    ""Id"" TEXT NOT NULL PRIMARY KEY,
+                    ""ProjectId"" TEXT NOT NULL,
+                    ""ChapterNumber"" INTEGER NOT NULL,
+                    ""Title"" TEXT NOT NULL,
+                    ""Status"" TEXT NOT NULL,
+                    ""CreatedAtUtc"" TEXT NOT NULL,
+                    ""UpdatedAtUtc"" TEXT NOT NULL,
+                    FOREIGN KEY (""ProjectId"") REFERENCES ""Projects"" (""Id"") ON DELETE CASCADE
+                );
+                DROP TABLE ""Chapters"";
+                ALTER TABLE ""Chapters_Old"" RENAME TO ""Chapters"";
+                CREATE UNIQUE INDEX ""IX_Chapters_ProjectId_ChapterNumber"" ON ""Chapters"" (""ProjectId"", ""ChapterNumber"");
+                PRAGMA foreign_keys = ON;
+            ";
+            await cmd.ExecuteNonQueryAsync();
+            await conn.CloseAsync();
+        }
+
+        // 2. Try to initialize
+        using (var migrationContext = new Dragonfly44DbContext(options))
+        {
+            var initializer = new SqliteDatabaseInitializer(
+                migrationContext,
+                Options.Create(new DatabaseOptions { ConnectionString = $"Data Source={dbPath}" }),
+                Options.Create(new StorageOptions { AppDataDirectory = Path.GetDirectoryName(dbPath)! }),
+                NullLogger<SqliteDatabaseInitializer>.Instance);
+
+            var act = async () => await initializer.InitializeAsync();
+            var ex = await act.Should().ThrowAsync<IncompatibleDatabaseSchemaException>();
+            ex.Which.Message.Should().Contain("column 'Status' has type 'TEXT' but expected 'INTEGER'");
+        }
+    }
+
+    [Fact]
+    public async Task LegacyDatabase_WithMissingForeignKey_ShouldAbortSafely()
+    {
+        var dbPath = CreateTempDbPath();
+        var options = new DbContextOptionsBuilder<Dragonfly44DbContext>()
+            .UseSqlite($"Data Source={dbPath}", b => b.MigrationsAssembly(typeof(Dragonfly44DbContext).Assembly.FullName))
+            .Options;
+
+        // 1. Create Chapters without FK to Projects
+        using (var rawContext = new Dragonfly44DbContext(options))
+        {
+            await rawContext.Database.EnsureCreatedAsync();
+
+            var conn = rawContext.Database.GetDbConnection();
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                PRAGMA foreign_keys = OFF;
+                CREATE TABLE ""Chapters_Old"" (
+                    ""Id"" TEXT NOT NULL PRIMARY KEY,
+                    ""ProjectId"" TEXT NOT NULL,
+                    ""ChapterNumber"" INTEGER NOT NULL,
+                    ""Title"" TEXT NOT NULL,
+                    ""Status"" INTEGER NOT NULL,
+                    ""CreatedAtUtc"" TEXT NOT NULL,
+                    ""UpdatedAtUtc"" TEXT NOT NULL
+                );
+                DROP TABLE ""Chapters"";
+                ALTER TABLE ""Chapters_Old"" RENAME TO ""Chapters"";
+                CREATE UNIQUE INDEX ""IX_Chapters_ProjectId_ChapterNumber"" ON ""Chapters"" (""ProjectId"", ""ChapterNumber"");
+                PRAGMA foreign_keys = ON;
+            ";
+            await cmd.ExecuteNonQueryAsync();
+            await conn.CloseAsync();
+        }
+
+        // 2. Try to initialize
+        using (var migrationContext = new Dragonfly44DbContext(options))
+        {
+            var initializer = new SqliteDatabaseInitializer(
+                migrationContext,
+                Options.Create(new DatabaseOptions { ConnectionString = $"Data Source={dbPath}" }),
+                Options.Create(new StorageOptions { AppDataDirectory = Path.GetDirectoryName(dbPath)! }),
+                NullLogger<SqliteDatabaseInitializer>.Instance);
+
+            var act = async () => await initializer.InitializeAsync();
+            var ex = await act.Should().ThrowAsync<IncompatibleDatabaseSchemaException>();
+            ex.Which.Message.Should().Contain("missing foreign key");
+        }
+    }
+
+    [Fact]
+    public async Task LegacyDatabase_WithMissingIndex_ShouldAbortSafely()
+    {
+        var dbPath = CreateTempDbPath();
+        var options = new DbContextOptionsBuilder<Dragonfly44DbContext>()
+            .UseSqlite($"Data Source={dbPath}", b => b.MigrationsAssembly(typeof(Dragonfly44DbContext).Assembly.FullName))
+            .Options;
+
+        // 1. Create schema and drop IX_Projects_Name index
+        using (var rawContext = new Dragonfly44DbContext(options))
+        {
+            await rawContext.Database.EnsureCreatedAsync();
+
+            var conn = rawContext.Database.GetDbConnection();
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"DROP INDEX ""IX_Projects_Name"";";
+            await cmd.ExecuteNonQueryAsync();
+            await conn.CloseAsync();
+        }
+
+        // 2. Try to initialize
+        using (var migrationContext = new Dragonfly44DbContext(options))
+        {
+            var initializer = new SqliteDatabaseInitializer(
+                migrationContext,
+                Options.Create(new DatabaseOptions { ConnectionString = $"Data Source={dbPath}" }),
+                Options.Create(new StorageOptions { AppDataDirectory = Path.GetDirectoryName(dbPath)! }),
+                NullLogger<SqliteDatabaseInitializer>.Instance);
+
+            var act = async () => await initializer.InitializeAsync();
+            var ex = await act.Should().ThrowAsync<IncompatibleDatabaseSchemaException>();
+            ex.Which.Message.Should().Contain("missing index 'IX_Projects_Name'");
         }
     }
 }
