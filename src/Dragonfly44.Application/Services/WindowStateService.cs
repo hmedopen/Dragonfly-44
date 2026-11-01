@@ -29,6 +29,12 @@ public class WindowStateService : IWindowStateService
 
     public void UpdateBounds(int x, int y, int width, int height)
     {
+        // Guard against invalid or transient minimized coordinates (e.g. -32000 in Win32)
+        if (width <= 0 || height <= 0 || x <= -10000 || y <= -10000)
+        {
+            return;
+        }
+
         CurrentBounds = CurrentBounds with { X = x, Y = y, Width = width, Height = height };
         BoundsChanged?.Invoke(this, CurrentBounds);
     }

@@ -1,7 +1,7 @@
 using Dragonfly44.Application.Common.Models;
 using Dragonfly44.Application.Interfaces;
+using Dragonfly44.Application.Services;
 using Dragonfly44.Presentation.Input;
-using Dragonfly44.Presentation.Services;
 using Dragonfly44.Presentation.ViewModels;
 using Dragonfly44.Presentation.Windowing;
 using Microsoft.UI.Xaml;
@@ -20,7 +20,9 @@ public sealed partial class MainWindow : Window
         IDialogService dialogService,
         IKeyboardShortcutService shortcutService,
         IFocusService focusService,
-        IDragDropService dragDropService)
+        IDragDropService dragDropService,
+        IThemeService themeService,
+        IWindowStateService windowStateService)
     {
         InitializeComponent();
         ViewModel = viewModel;
@@ -31,6 +33,24 @@ public sealed partial class MainWindow : Window
         // Workstream 1: Window infrastructure initialization
         TitleBarControl.WindowController = WindowController;
         WindowController.Attach(this, TitleBarControl.DragRegion);
+
+        // Restore saved window placement from settings
+        var savedBounds = windowStateService.LoadStateAsync().GetAwaiter().GetResult();
+        WindowController.RestorePlacement(savedBounds);
+
+        // Workstream 3: Apply and register theme with visual root
+        void ApplyTheme(ApplicationThemePreference theme)
+        {
+            RootGrid.RequestedTheme = theme switch
+            {
+                ApplicationThemePreference.Dark => ElementTheme.Dark,
+                ApplicationThemePreference.Light => ElementTheme.Light,
+                _ => ElementTheme.Default
+            };
+        }
+
+        ApplyTheme(themeService.CurrentTheme);
+        themeService.ThemeChanged += (s, theme) => ApplyTheme(theme);
 
         // Workstream 5: Input & Interaction routing
         inputRouter.Attach(RootGrid);
@@ -48,7 +68,7 @@ public sealed partial class MainWindow : Window
         // Workstream 6: Dialog Presentation service registration
         if (dialogService is DialogService ds)
         {
-            ds.RegisterHost(DialogHostControl);
+            ds.RegisterPresenter(DialogHostControl);
         }
 
         // Register sample shortcuts demonstrating global vs text-editing distinction

@@ -1,15 +1,18 @@
 using Dragonfly44.Application.Common.Models;
+using Dragonfly44.Application.Interfaces;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Dragonfly44.Presentation.Controls;
 
-public class CustomDialogHost : ContentControl
+public class CustomDialogHost : ContentControl, IDialogPresenter
 {
-    private TaskCompletionSource<DialogResult>? _dialogTcs;
-    private Button? _primaryButton;
-    private Button? _secondaryButton;
-    private Button? _cancelButton;
+    private readonly Queue<(DialogOptions Options, TaskCompletionSource<DialogResult> Tcs)> _dialogQueue = new();
+    private TaskCompletionSource<DialogResult>? _currentDialogTcs;
+
+    private CustomButton? _primaryButton;
+    private CustomButton? _secondaryButton;
+    private CustomButton? _cancelButton;
 
     public static readonly DependencyProperty IsOpenProperty =
         DependencyProperty.Register(
@@ -93,6 +96,20 @@ public class CustomDialogHost : ContentControl
     {
         DefaultStyleKey = typeof(CustomDialogHost);
         Visibility = Visibility.Collapsed;
+        Unloaded += OnUnloaded;
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        // Cancel any pending dialog callers safely
+        _currentDialogTcs?.TrySetResult(DialogResult.Cancel);
+        _currentDialogTcs = null;
+
+        while (_dialogQueue.Count > 0)
+        {
+            var (_, pendingTcs) = _dialogQueue.Dequeue();
+            pendingTcs.TrySetResult(DialogResult.Cancel);
+        }
     }
 
     protected override void OnApplyTemplate()
@@ -103,9 +120,9 @@ public class CustomDialogHost : ContentControl
         if (_secondaryButton != null) _secondaryButton.Click -= OnSecondaryClicked;
         if (_cancelButton != null) _cancelButton.Click -= OnCancelClicked;
 
-        _primaryButton = GetTemplateChild("PART_PrimaryButton") as Button;
-        _secondaryButton = GetTemplateChild("PART_SecondaryButton") as Button;
-        _cancelButton = GetTemplateChild("PART_CancelButton") as Button;
+        _primaryButton = GetTemplateChild("PART_PrimaryButton") as CustomButton;
+        _secondaryButton = GetTemplateChild("PART_SecondaryButton") as CustomButton;
+        _cancelButton = GetTemplateChild("PART_CancelButton") as CustomButton;
 
         if (_primaryButton != null) _primaryButton.Click += OnPrimaryClicked;
         if (_secondaryButton != null) _secondaryButton.Click += OnSecondaryClicked;
@@ -127,9 +144,26 @@ public class CustomDialogHost : ContentControl
         Visibility = IsOpen ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    public Task<DialogResult> ShowDialogAsync(DialogOptions options) => ShowAsync(options);
+
     public Task<DialogResult> ShowAsync(DialogOptions options)
     {
-        _dialogTcs = new TaskCompletionSource<DialogResult>();
+        var tcs = new TaskCompletionSource<DialogResult>();
+
+        // If a dialog is already showing, queue this request
+        if (IsOpen)
+        {
+            _dialogQueue.Enqueue((options, tcs));
+            return tcs.Task;
+        }
+
+        DisplayDialog(options, tcs);
+        return tcs.Task;
+    }
+
+    private void DisplayDialog(DialogOptions options, TaskCompletionSource<DialogResult> tcs)
+    {
+        _currentDialogTcs = tcs;
 
         DialogTitle = options.Title;
         DialogMessage = options.Message;
@@ -138,8 +172,6 @@ public class CustomDialogHost : ContentControl
         CancelButtonText = options.CloseButtonText ?? "Cancel";
 
         IsOpen = true;
-
-        return _dialogTcs.Task;
     }
 
     private void OnPrimaryClicked(object sender, RoutedEventArgs e)
@@ -159,7 +191,16 @@ public class CustomDialogHost : ContentControl
 
     private void CloseWithResult(DialogResult result)
     {
+        var tcs = _currentDialogTcs;
+        _currentDialogTcs = null;
         IsOpen = false;
-        _dialogTcs?.TrySetResult(result);
+        tcs?.TrySetResult(result);
+
+        // Process next queued dialog if any
+        if (_dialogQueue.Count > 0)
+        {
+            var (nextOptions, nextTcs) = _dialogQueue.Dequeue();
+            DisplayDialog(nextOptions, nextTcs);
+        }
     }
 }

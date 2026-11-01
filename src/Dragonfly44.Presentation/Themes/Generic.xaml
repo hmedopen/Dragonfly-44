@@ -50,33 +50,33 @@
 
                         <!-- Window Control Buttons (Min, Max/Restore, Close) -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch">
-                            <Button x:Name="PART_MinimizeButton"
-                                    Width="46"
-                                    Height="{StaticResource DragonflyTitleBarHeight}"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    CornerRadius="0"
-                                    Content="🗕"
-                                    FontSize="11"
-                                    Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
-                            <Button x:Name="PART_MaximizeButton"
-                                    Width="46"
-                                    Height="{StaticResource DragonflyTitleBarHeight}"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    CornerRadius="0"
-                                    Content="🗖"
-                                    FontSize="11"
-                                    Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
-                            <Button x:Name="PART_CloseButton"
-                                    Width="46"
-                                    Height="{StaticResource DragonflyTitleBarHeight}"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    CornerRadius="0"
-                                    Content="✕"
-                                    FontSize="11"
-                                    Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+                            <controls:CustomButton x:Name="PART_MinimizeButton"
+                                                   Width="46"
+                                                   Height="{StaticResource DragonflyTitleBarHeight}"
+                                                   Background="Transparent"
+                                                   BorderThickness="0"
+                                                   CornerRadius="0"
+                                                   Content="🗕"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+                            <controls:CustomButton x:Name="PART_MaximizeButton"
+                                                   Width="46"
+                                                   Height="{StaticResource DragonflyTitleBarHeight}"
+                                                   Background="Transparent"
+                                                   BorderThickness="0"
+                                                   CornerRadius="0"
+                                                   Content="🗖"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+                            <controls:CustomButton x:Name="PART_CloseButton"
+                                                   Width="46"
+                                                   Height="{StaticResource DragonflyTitleBarHeight}"
+                                                   Background="Transparent"
+                                                   BorderThickness="0"
+                                                   CornerRadius="0"
+                                                   Content="✕"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
                         </StackPanel>
                     </Grid>
                 </ControlTemplate>
@@ -179,15 +179,15 @@
 
                                 <!-- Action Buttons -->
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-                                    <Button x:Name="PART_CancelButton"
-                                            Content="{TemplateBinding CancelButtonText}"
-                                            Padding="12,6" />
-                                    <Button x:Name="PART_SecondaryButton"
-                                            Content="{TemplateBinding SecondaryButtonText}"
-                                            Padding="12,6" />
-                                    <Button x:Name="PART_PrimaryButton"
-                                            Content="{TemplateBinding PrimaryButtonText}"
-                                            Padding="12,6" />
+                                    <controls:CustomButton x:Name="PART_CancelButton"
+                                                           Content="{TemplateBinding CancelButtonText}"
+                                                           Padding="12,6" />
+                                    <controls:CustomButton x:Name="PART_SecondaryButton"
+                                                           Content="{TemplateBinding SecondaryButtonText}"
+                                                           Padding="12,6" />
+                                    <controls:CustomButton x:Name="PART_PrimaryButton"
+                                                           Content="{TemplateBinding PrimaryButtonText}"
+                                                           Padding="12,6" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>

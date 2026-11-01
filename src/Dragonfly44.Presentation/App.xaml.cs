@@ -5,7 +5,6 @@ using Dragonfly44.Infrastructure.Exceptions;
 using Dragonfly44.Infrastructure.Logging;
 using Dragonfly44.Presentation.Input;
 using Dragonfly44.Presentation.Rendering;
-using Dragonfly44.Presentation.Services;
 using Dragonfly44.Presentation.ViewModels;
 using Dragonfly44.Presentation.Windowing;
 using Microsoft.Extensions.Configuration;
@@ -120,27 +119,11 @@ public partial class App : Microsoft.UI.Xaml.Application
             var settingsService = Services.GetRequiredService<ISettingsService>();
             await settingsService.LoadAsync();
 
-            // Initialize Database
-            var dbInitializer = Services.GetRequiredService<IDatabaseInitializer>();
-            await dbInitializer.InitializeAsync();
-
-            // Demonstrate saving and retrieving a test entity if database is empty
-            var projectService = Services.GetRequiredService<IProjectService>();
-            var existingProjects = await projectService.GetAllProjectsAsync();
-            if (existingProjects.Count == 0)
+            // Initialize Database using an explicit DI scope
+            using (var scope = Services.CreateScope())
             {
-                logger.LogInformation("Demonstrating persistence: creating initial sample project...");
-                var createResult = await projectService.CreateProjectAsync(
-                    name: "Sample Scanlation Project",
-                    sourceLang: "ja",
-                    targetLang: "ar",
-                    description: "Initial foundation test entity demonstrating SQLite persistence.");
-
-                if (createResult.IsSuccess)
-                {
-                    logger.LogInformation("Persistence demonstration verified: created project '{Name}' with ID {Id}",
-                        createResult.Value!.Name, createResult.Value.Id);
-                }
+                var dbInitializer = scope.ServiceProvider.GetRequiredService<IDatabaseInitializer>();
+                await dbInitializer.InitializeAsync();
             }
 
             _mainWindow = Services.GetRequiredService<MainWindow>();

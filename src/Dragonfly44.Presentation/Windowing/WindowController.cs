@@ -21,6 +21,7 @@ public class WindowController : IWindowController
     private OverlappedPresenter? _presenter;
     private IntPtr _hwnd = IntPtr.Zero;
     private FrameworkElement? _dragElement;
+    private WindowBounds _lastNormalBounds = new(100, 100, 1280, 800, WindowState.Normal, 1.0);
 
     public WindowState CurrentState { get; private set; } = WindowState.Normal;
     public WindowBounds CurrentBounds { get; private set; } = new(100, 100, 1280, 800);
@@ -76,8 +77,10 @@ public class WindowController : IWindowController
         // Update DPI
         UpdateDpiScale();
 
-        // Listen to window size and state changes
+        // Listen to window size, state, and closing changes
         _appWindow.Changed += OnAppWindowChanged;
+        _appWindow.Closing += (sender, args) => SaveCurrentState();
+        _window.Closed += (sender, args) => SaveCurrentState();
 
         if (dragRegionElement != null)
         {
@@ -158,14 +161,55 @@ public class WindowController : IWindowController
             var position = sender.Position;
             var size = sender.Size;
 
+            if (newState == WindowState.Normal && size.Width > 0 && size.Height > 0 && position.X > -10000)
+            {
+                _lastNormalBounds = new WindowBounds(position.X, position.Y, size.Width, size.Height, WindowState.Normal, CurrentDpiScale);
+                _windowStateService.UpdateBounds(position.X, position.Y, size.Width, size.Height);
+            }
+
             CurrentBounds = new WindowBounds(position.X, position.Y, size.Width, size.Height, newState, CurrentDpiScale);
             CurrentState = newState;
 
-            _windowStateService.UpdateBounds(position.X, position.Y, size.Width, size.Height);
             _windowStateService.UpdateState(newState);
 
             StateChanged?.Invoke(this, new WindowStateChangedEventArgs(newState, CurrentBounds));
         }
+    }
+
+    public void SaveCurrentState()
+    {
+        var stateToPersist = CurrentState == WindowState.Minimized ? WindowState.Normal : CurrentState;
+        var boundsToPersist = _lastNormalBounds with { State = stateToPersist, DpiScale = CurrentDpiScale };
+        _windowStateService.UpdateBounds(boundsToPersist.X, boundsToPersist.Y, boundsToPersist.Width, boundsToPersist.Height);
+        _windowStateService.UpdateState(stateToPersist);
+        _ = _windowStateService.SaveStateAsync();
+        _logger.LogInformation("Saved window state on shutdown/close: {@Bounds}", boundsToPersist);
+    }
+
+    public void RestorePlacement(WindowBounds? bounds)
+    {
+        if (_appWindow == null) return;
+
+        if (bounds == null || bounds.Width <= 0 || bounds.Height <= 0)
+        {
+            bounds = new WindowBounds(100, 100, 1280, 800, WindowState.Normal, CurrentDpiScale);
+        }
+
+        var validated = ValidateCoordinates(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+        _lastNormalBounds = new WindowBounds(validated.X, validated.Y, validated.Width, validated.Height, WindowState.Normal, CurrentDpiScale);
+
+        _appWindow.MoveAndResize(new RectInt32(validated.X, validated.Y, validated.Width, validated.Height));
+
+        if (bounds.State == WindowState.Maximized)
+        {
+            Maximize();
+        }
+        else
+        {
+            Restore();
+        }
+
+        _logger.LogInformation("Restored window placement: {@ValidatedBounds} (State: {State})", validated, bounds.State);
     }
 
     private void UpdateDpiScale()

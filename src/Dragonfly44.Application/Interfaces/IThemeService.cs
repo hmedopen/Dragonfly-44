@@ -14,4 +14,5 @@ public interface IThemeService
     ApplicationThemePreference CurrentTheme { get; }
 
     void SetTheme(ApplicationThemePreference theme);
+    Task SetThemeAsync(ApplicationThemePreference theme);
 }

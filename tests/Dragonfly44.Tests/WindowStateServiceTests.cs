@@ -31,6 +31,27 @@ public class WindowStateServiceTests
         public Task SaveAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
+    [Theory]
+    [InlineData(-32000, -32000, 100, 100)] // Win32 minimized position
+    [InlineData(100, 100, 0, 500)]          // Zero width
+    [InlineData(100, 100, 800, 0)]          // Zero height
+    [InlineData(100, 100, -100, 500)]       // Negative width
+    public void UpdateBounds_WithInvalidOrMinimizedDimensions_ShouldBeIgnored(int x, int y, int width, int height)
+    {
+        var settings = new InMemorySettingsService();
+        var service = new WindowStateService(settings, NullLogger<WindowStateService>.Instance);
+        service.UpdateBounds(200, 200, 1024, 768);
+
+        // Act
+        service.UpdateBounds(x, y, width, height);
+
+        // Assert: must remain at last valid bounds
+        service.CurrentBounds.X.Should().Be(200);
+        service.CurrentBounds.Y.Should().Be(200);
+        service.CurrentBounds.Width.Should().Be(1024);
+        service.CurrentBounds.Height.Should().Be(768);
+    }
+
     [Fact]
     public void UpdateBounds_ShouldUpdateCurrentBoundsAndFireEvent()
     {

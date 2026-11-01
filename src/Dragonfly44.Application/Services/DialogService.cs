@@ -1,24 +1,24 @@
 using Dragonfly44.Application.Common.Models;
 using Dragonfly44.Application.Interfaces;
-using Dragonfly44.Presentation.Controls;
 using Microsoft.Extensions.Logging;
 
-namespace Dragonfly44.Presentation.Services;
+namespace Dragonfly44.Application.Services;
 
 public class DialogService : IDialogService
 {
+    private readonly SemaphoreSlim _dialogLock = new(1, 1);
     private readonly ILogger<DialogService> _logger;
-    private CustomDialogHost? _dialogHost;
+    private IDialogPresenter? _presenter;
 
     public DialogService(ILogger<DialogService> logger)
     {
         _logger = logger;
     }
 
-    public void RegisterHost(CustomDialogHost host)
+    public void RegisterPresenter(IDialogPresenter presenter)
     {
-        _dialogHost = host ?? throw new ArgumentNullException(nameof(host));
-        _logger.LogInformation("CustomDialogHost registered with DialogService");
+        _presenter = presenter ?? throw new ArgumentNullException(nameof(presenter));
+        _logger.LogInformation("IDialogPresenter registered with DialogService.");
     }
 
     public async Task<DialogResult> ShowConfirmationAsync(
@@ -51,13 +51,27 @@ public class DialogService : IDialogService
 
     public async Task<DialogResult> ShowCustomDialogAsync(DialogOptions options)
     {
-        if (_dialogHost == null)
+        if (_presenter == null)
         {
-            _logger.LogWarning("Dialog presentation requested without a registered CustomDialogHost. Returning Cancel.");
+            _logger.LogWarning("Dialog presentation requested without a registered IDialogPresenter. Returning Cancel.");
             return DialogResult.Cancel;
         }
 
-        _logger.LogInformation("Presenting dialog: '{Title}'", options.Title);
-        return await _dialogHost.ShowAsync(options);
+        // Single-dialog policy: await the lock so subsequent requests are queued in FIFO order
+        await _dialogLock.WaitAsync();
+        try
+        {
+            _logger.LogInformation("Presenting dialog: '{Title}'", options.Title);
+            return await _presenter.ShowDialogAsync(options);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error presenting dialog: '{Title}'", options.Title);
+            return DialogResult.Cancel;
+        }
+        finally
+        {
+            _dialogLock.Release();
+        }
     }
 }

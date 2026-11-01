@@ -42,7 +42,9 @@ public static class InfrastructureServiceExtensions
             string connectionString;
             if (!string.IsNullOrEmpty(overrideDbPath))
             {
-                connectionString = $"Data Source={overrideDbPath}";
+                connectionString = overrideDbPath.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase)
+                    ? overrideDbPath
+                    : $"Data Source={overrideDbPath}";
             }
             else
             {

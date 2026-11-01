@@ -1,3 +1,4 @@
+using Dragonfly44.Presentation.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -5,9 +6,9 @@ namespace Dragonfly44.Presentation.Windowing;
 
 public class CustomTitleBar : ContentControl
 {
-    private Button? _minimizeButton;
-    private Button? _maximizeButton;
-    private Button? _closeButton;
+    private CustomButton? _minimizeButton;
+    private CustomButton? _maximizeButton;
+    private CustomButton? _closeButton;
     private FrameworkElement? _dragRegion;
 
     public static readonly DependencyProperty TitleProperty =
@@ -64,9 +65,9 @@ public class CustomTitleBar : ContentControl
         if (_maximizeButton != null) _maximizeButton.Click -= OnMaximizeClicked;
         if (_closeButton != null) _closeButton.Click -= OnCloseClicked;
 
-        _minimizeButton = GetTemplateChild("PART_MinimizeButton") as Button;
-        _maximizeButton = GetTemplateChild("PART_MaximizeButton") as Button;
-        _closeButton = GetTemplateChild("PART_CloseButton") as Button;
+        _minimizeButton = GetTemplateChild("PART_MinimizeButton") as CustomButton;
+        _maximizeButton = GetTemplateChild("PART_MaximizeButton") as CustomButton;
+        _closeButton = GetTemplateChild("PART_CloseButton") as CustomButton;
         _dragRegion = GetTemplateChild("PART_DragRegion") as FrameworkElement;
 
         if (_minimizeButton != null) _minimizeButton.Click += OnMinimizeClicked;
@@ -118,7 +119,6 @@ public class CustomTitleBar : ContentControl
     {
         if (_maximizeButton != null)
         {
-            // Placeholder glyph or text: maximize vs restore
             _maximizeButton.Content = IsMaximized ? "🗗" : "🗖";
         }
     }

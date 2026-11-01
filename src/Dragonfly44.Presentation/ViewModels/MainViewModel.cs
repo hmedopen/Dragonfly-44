@@ -1,14 +1,14 @@
 using Dragonfly44.Application.Common.Models;
 using Dragonfly44.Application.Interfaces;
 using Dragonfly44.Application.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Dragonfly44.Presentation.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
-    private readonly IDatabaseInitializer _dbInitializer;
-    private readonly IProjectService _projectService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IScanEngineRegistry _scanEngineRegistry;
     private readonly IWindowStateService _windowStateService;
     private readonly INotificationService _notificationService;
@@ -121,8 +121,7 @@ public class MainViewModel : ViewModelBase
     }
 
     public MainViewModel(
-        IDatabaseInitializer dbInitializer,
-        IProjectService projectService,
+        IServiceScopeFactory scopeFactory,
         IScanEngineRegistry scanEngineRegistry,
         IWindowStateService windowStateService,
         INotificationService notificationService,
@@ -131,8 +130,7 @@ public class MainViewModel : ViewModelBase
         IKeyboardShortcutService shortcutService,
         ILogger<MainViewModel> logger)
     {
-        _dbInitializer = dbInitializer;
-        _projectService = projectService;
+        _scopeFactory = scopeFactory;
         _scanEngineRegistry = scanEngineRegistry;
         _windowStateService = windowStateService;
         _notificationService = notificationService;
@@ -162,12 +160,18 @@ public class MainViewModel : ViewModelBase
         _logger.LogInformation("MainViewModel initialization started.");
         try
         {
-            DatabasePath = _dbInitializer.GetDatabasePath();
-            var canConnect = await _dbInitializer.CanConnectAsync(cancellationToken);
-            DatabaseStatus = canConnect ? "Connected (SQLite WAL Mode)" : "Connection Failed";
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var dbInitializer = scope.ServiceProvider.GetRequiredService<IDatabaseInitializer>();
+                var projectService = scope.ServiceProvider.GetRequiredService<IProjectService>();
 
-            var projects = await _projectService.GetAllProjectsAsync(cancellationToken);
-            ProjectCount = projects.Count;
+                DatabasePath = dbInitializer.GetDatabasePath();
+                var canConnect = await dbInitializer.CanConnectAsync(cancellationToken);
+                DatabaseStatus = canConnect ? "Connected (SQLite WAL Mode)" : "Connection Failed";
+
+                var projects = await projectService.GetAllProjectsAsync(cancellationToken);
+                ProjectCount = projects.Count;
+            }
 
             var b = _windowStateService.CurrentBounds;
             WindowBoundsText = $"{b.Width} x {b.Height} at ({b.X}, {b.Y})";

@@ -99,7 +99,7 @@ public class ClipboardService : IClipboardService
         return null;
     }
 
-    public Task SetImageDataAsync(byte[] imageBytes)
+    public async Task SetImageDataAsync(byte[] imageBytes)
     {
         try
         {
@@ -107,7 +107,9 @@ public class ClipboardService : IClipboardService
             using (var writer = new DataWriter(memoryStream))
             {
                 writer.WriteBytes(imageBytes);
-                writer.StoreAsync().AsTask().Wait();
+                await writer.StoreAsync();
+                await writer.FlushAsync();
+                writer.DetachStream();
             }
             memoryStream.Seek(0);
 
@@ -119,8 +121,6 @@ public class ClipboardService : IClipboardService
         {
             _logger.LogWarning(ex, "Failed to set image to clipboard");
         }
-
-        return Task.CompletedTask;
     }
 
     public Task ClearAsync()

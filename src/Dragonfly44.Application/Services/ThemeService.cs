@@ -1,8 +1,7 @@
 using Dragonfly44.Application.Interfaces;
 using Microsoft.Extensions.Logging;
-using Microsoft.UI.Xaml;
 
-namespace Dragonfly44.Presentation.Services;
+namespace Dragonfly44.Application.Services;
 
 public class ThemeService : IThemeService
 {
@@ -30,12 +29,16 @@ public class ThemeService : IThemeService
 
     public void SetTheme(ApplicationThemePreference theme)
     {
-        if (CurrentTheme != theme)
-        {
-            CurrentTheme = theme;
-            _settingsService.Set(ThemeSettingKey, theme.ToString());
-            _logger.LogInformation("Theme preference changed to: {Theme}", theme);
-            ThemeChanged?.Invoke(this, theme);
-        }
+        _ = SetThemeAsync(theme);
+    }
+
+    public async Task SetThemeAsync(ApplicationThemePreference theme)
+    {
+        CurrentTheme = theme;
+        _settingsService.Set(ThemeSettingKey, theme.ToString());
+        await _settingsService.SaveAsync();
+
+        _logger.LogInformation("Theme preference changed and persisted to: {Theme}", theme);
+        ThemeChanged?.Invoke(this, theme);
     }
 }

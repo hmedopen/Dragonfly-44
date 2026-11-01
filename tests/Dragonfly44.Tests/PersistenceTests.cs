@@ -62,6 +62,17 @@ public class PersistenceTests : IDisposable
     }
 
     [Fact]
+    public async Task FreshDatabase_AfterInitialization_ShouldHaveZeroProjectsByDefault()
+    {
+        // Act
+        await _initializer.InitializeAsync();
+        var projects = await _repository.GetAllAsync();
+
+        // Assert: Database must be genuinely empty for new users without automatic sample data
+        projects.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task SaveAndRetrieve_ProjectWithFullHierarchy_ShouldPersistCorrectly()
     {
         // Arrange
