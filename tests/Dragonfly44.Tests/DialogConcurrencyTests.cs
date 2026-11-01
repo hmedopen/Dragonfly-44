@@ -117,14 +117,144 @@ public class DialogConcurrencyTests
     }
 
     [Fact]
+    public async Task ShowCustomDialogAsync_MultipleConcurrentRequests_GuaranteedFifoExecution()
+    {
+        var presenter = new MockDialogPresenter();
+        var service = new DialogService(NullLogger<DialogService>.Instance);
+        service.RegisterPresenter(presenter);
+
+        var tcsList = new List<TaskCompletionSource<DialogResult>>();
+        for (int i = 0; i < 5; i++)
+        {
+            var tcs = new TaskCompletionSource<DialogResult>();
+            tcsList.Add(tcs);
+            presenter.EnqueueResponse(_ => tcs.Task);
+        }
+
+        // Enqueue 5 requests concurrently in order 1..5
+        var tasks = new List<Task<DialogResult>>();
+        for (int i = 1; i <= 5; i++)
+        {
+            tasks.Add(service.ShowConfirmationAsync($"Title {i}", $"Message {i}"));
+        }
+
+        // Release one by one and assert strict sequential ordering
+        for (int i = 0; i < 5; i++)
+        {
+            await Task.Yield();
+            presenter.PresentedDialogs.Count.Should().Be(i + 1, $"Dialog {i + 1} should be displayed next");
+            presenter.PresentedDialogs[i].Title.Should().Be($"Title {i + 1}");
+
+            tcsList[i].SetResult(DialogResult.Primary);
+            var res = await tasks[i];
+            res.Should().Be(DialogResult.Primary);
+        }
+
+        presenter.PresentedDialogs.Select(d => d.Title)
+            .Should().Equal("Title 1", "Title 2", "Title 3", "Title 4", "Title 5");
+    }
+
+    [Fact]
+    public async Task ShowCustomDialogAsync_WhenCallerCancelsWhileQueued_ShouldCancelSafelyAndAdvanceQueue()
+    {
+        var presenter = new MockDialogPresenter();
+        var service = new DialogService(NullLogger<DialogService>.Instance);
+        service.RegisterPresenter(presenter);
+
+        var tcs1 = new TaskCompletionSource<DialogResult>();
+        var tcs3 = new TaskCompletionSource<DialogResult>();
+
+        presenter.EnqueueResponse(_ => tcs1.Task);
+        presenter.EnqueueResponse(_ => tcs3.Task);
+
+        using var cts2 = new CancellationTokenSource();
+
+        var task1 = service.ShowConfirmationAsync("Dialog 1", "Message 1");
+        var task2 = service.ShowConfirmationAsync("Dialog 2", "Message 2", cancellationToken: cts2.Token);
+        var task3 = service.ShowConfirmationAsync("Dialog 3", "Message 3");
+
+        await Task.Yield();
+
+        // Cancel dialog 2 while it is waiting in the queue
+        cts2.Cancel();
+
+        // task 2 should resolve immediately with Cancel
+        var result2 = await task2;
+        result2.Should().Be(DialogResult.Cancel);
+
+        // Now complete dialog 1
+        tcs1.SetResult(DialogResult.Primary);
+        var result1 = await task1;
+        result1.Should().Be(DialogResult.Primary);
+
+        // Dialog 3 should now be presented directly, skipping dialog 2
+        await Task.Yield();
+        tcs3.SetResult(DialogResult.Primary);
+        var result3 = await task3;
+        result3.Should().Be(DialogResult.Primary);
+
+        presenter.PresentedDialogs.Select(d => d.Title).Should().Equal("Dialog 1", "Dialog 3");
+    }
+
+    [Fact]
+    public async Task ShowCustomDialogAsync_WhenPresenterThrows_ShouldNotLeaveSubsequentCallersWaiting()
+    {
+        var presenter = new MockDialogPresenter();
+        var service = new DialogService(NullLogger<DialogService>.Instance);
+        service.RegisterPresenter(presenter);
+
+        // First dialog throws
+        presenter.EnqueueResponse(_ => throw new InvalidOperationException("Simulated UI host crash"));
+        // Second dialog succeeds
+        presenter.EnqueueResponse(_ => Task.FromResult(DialogResult.Primary));
+
+        var task1 = service.ShowConfirmationAsync("Failing Dialog", "Message");
+        var task2 = service.ShowConfirmationAsync("Succeeding Dialog", "Message");
+
+        var result1 = await task1;
+        result1.Should().Be(DialogResult.Cancel, "Failed dialog presentation must return Cancel safely without throwing unhandled exception");
+
+        var result2 = await task2;
+        result2.Should().Be(DialogResult.Primary, "Subsequent dialog in FIFO queue must be processed cleanly");
+    }
+
+    [Fact]
+    public async Task CancelAllPendingRequests_OnShutdown_ShouldUnblockAllCallersSafely()
+    {
+        var presenter = new MockDialogPresenter();
+        var service = new DialogService(NullLogger<DialogService>.Instance);
+        service.RegisterPresenter(presenter);
+
+        var tcs1 = new TaskCompletionSource<DialogResult>();
+        presenter.EnqueueResponse(_ => tcs1.Task);
+
+        var task1 = service.ShowConfirmationAsync("Dialog 1", "Message 1");
+        var task2 = service.ShowConfirmationAsync("Dialog 2", "Message 2");
+        var task3 = service.ShowConfirmationAsync("Dialog 3", "Message 3");
+
+        await Task.Yield();
+
+        // Shutdown called: cancel all pending
+        service.CancelAllPendingRequests();
+
+        var result2 = await task2;
+        var result3 = await task3;
+
+        result2.Should().Be(DialogResult.Cancel, "Queued callers must be unblocked on shutdown");
+        result3.Should().Be(DialogResult.Cancel, "Queued callers must be unblocked on shutdown");
+
+        // Complete the active one as well
+        tcs1.SetResult(DialogResult.Cancel);
+        var result1 = await task1;
+        result1.Should().Be(DialogResult.Cancel);
+    }
+
+    [Fact]
     public async Task ShowCustomDialogAsync_WithoutPresenter_ShouldSafelyReturnCancel()
     {
         var service = new DialogService(NullLogger<DialogService>.Instance);
 
         var act = async () => await service.ShowMessageAsync("Unregistered", "Should not hang");
         await act.Should().NotThrowAsync();
-
-        // Verify task completes immediately with no hanging
-        // ShowMessageAsync returns Task; it shouldn't throw or block
     }
 }

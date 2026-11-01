@@ -13,6 +13,7 @@ public class WindowStateServiceTests
     private class InMemorySettingsService : ISettingsService
     {
         private readonly Dictionary<string, object> _data = new();
+        public bool ShouldThrowOnSave { get; set; }
 
         public T Get<T>(string key, T defaultValue)
         {
@@ -28,7 +29,14 @@ public class WindowStateServiceTests
         public bool HasKey(string key) => _data.ContainsKey(key);
         public void Remove(string key) => _data.Remove(key);
         public Task LoadAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SaveAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SaveAsync(CancellationToken cancellationToken = default)
+        {
+            if (ShouldThrowOnSave)
+            {
+                throw new IOException("Simulated disk write failure or permission denied");
+            }
+            return Task.CompletedTask;
+        }
     }
 
     [Theory]
@@ -119,5 +127,18 @@ public class WindowStateServiceTests
         restored.Width.Should().Be(1600);
         restored.Height.Should().Be(1000);
         restored.DpiScale.Should().Be(1.25);
+    }
+
+    [Fact]
+    public async Task SaveStateAsync_WhenSettingsSaveThrows_ShouldCatchGracefullyWithoutCrashing()
+    {
+        var settings = new InMemorySettingsService { ShouldThrowOnSave = true };
+        var service = new WindowStateService(settings, NullLogger<WindowStateService>.Instance);
+
+        service.UpdateBounds(100, 100, 1280, 800);
+
+        // Act: should not throw exception or crash
+        var act = async () => await service.SaveStateAsync();
+        await act.Should().NotThrowAsync("Save failures must be handled safely without crashing application exit");
     }
 }

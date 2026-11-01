@@ -33,7 +33,9 @@ public interface IWindowController
     void Restore();
     void ToggleMaximize();
     void Close();
+    Task CloseAsync();
     void SetBounds(int x, int y, int width, int height);
     void RestorePlacement(WindowBounds? bounds);
     void SaveCurrentState();
+    Task SaveCurrentStateAsync();
 }

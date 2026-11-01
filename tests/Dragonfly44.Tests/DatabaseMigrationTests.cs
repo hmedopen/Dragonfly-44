@@ -1,5 +1,6 @@
 using Dragonfly44.Domain.Entities;
 using Dragonfly44.Infrastructure.Configuration;
+using Dragonfly44.Infrastructure.Exceptions;
 using Dragonfly44.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,17 @@ public class DatabaseMigrationTests : IDisposable
                 if (File.Exists(wal)) File.Delete(wal);
                 var shm = file + "-shm";
                 if (File.Exists(shm)) File.Delete(shm);
+
+                // Clean up any test backups created
+                var dir = Path.GetDirectoryName(file);
+                if (dir != null && Directory.Exists(dir))
+                {
+                    var baseName = Path.GetFileName(file);
+                    foreach (var bak in Directory.GetFiles(dir, $"{baseName}.bak_*"))
+                    {
+                        try { File.Delete(bak); } catch { }
+                    }
+                }
             }
             catch
             {
@@ -144,6 +156,163 @@ public class DatabaseMigrationTests : IDisposable
             var recordCount = Convert.ToInt64(await cmd.ExecuteScalarAsync());
             await conn.CloseAsync();
             recordCount.Should().BeGreaterThanOrEqualTo(1);
+        }
+    }
+
+    [Fact]
+    public async Task ExistingDatabase_ShouldCreateBackup_BeforeSchemaModification()
+    {
+        var dbPath = CreateTempDbPath();
+        var options = new DbContextOptionsBuilder<Dragonfly44DbContext>()
+            .UseSqlite($"Data Source={dbPath}", b => b.MigrationsAssembly(typeof(Dragonfly44DbContext).Assembly.FullName))
+            .Options;
+
+        // 1. Create initial database with user data
+        using (var legacyContext = new Dragonfly44DbContext(options))
+        {
+            await legacyContext.Database.EnsureCreatedAsync();
+            legacyContext.Projects.Add(new Project
+            {
+                Id = Guid.NewGuid(),
+                Name = "Backup Test Project",
+                SourceLanguage = "ja",
+                TargetLanguage = "ar"
+            });
+            await legacyContext.SaveChangesAsync();
+        }
+
+        // 2. Run initializer
+        using (var context = new Dragonfly44DbContext(options))
+        {
+            var initializer = new SqliteDatabaseInitializer(
+                context,
+                Options.Create(new DatabaseOptions { ConnectionString = $"Data Source={dbPath}" }),
+                Options.Create(new StorageOptions { AppDataDirectory = Path.GetDirectoryName(dbPath)! }),
+                NullLogger<SqliteDatabaseInitializer>.Instance);
+
+            await initializer.InitializeAsync();
+        }
+
+        // 3. Assert backup file exists in the directory
+        var dir = Path.GetDirectoryName(dbPath)!;
+        var baseName = Path.GetFileName(dbPath);
+        var backups = Directory.GetFiles(dir, $"{baseName}.bak_*");
+
+        backups.Should().NotBeEmpty("A pre-migration safety backup must be created before modifying an existing database");
+        new FileInfo(backups[0]).Length.Should().BeGreaterThan(0, "The backup file must not be empty");
+    }
+
+    [Fact]
+    public async Task LegacyDatabase_WithMissingTable_ShouldThrowIncompatibleDatabaseSchemaException_AndNeverModifyDatabase()
+    {
+        var dbPath = CreateTempDbPath();
+        var options = new DbContextOptionsBuilder<Dragonfly44DbContext>()
+            .UseSqlite($"Data Source={dbPath}", b => b.MigrationsAssembly(typeof(Dragonfly44DbContext).Assembly.FullName))
+            .Options;
+
+        var sampleProjectId = Guid.NewGuid();
+
+        // 1. Create an incomplete legacy database (missing Bubbles table)
+        using (var rawContext = new Dragonfly44DbContext(options))
+        {
+            var conn = rawContext.Database.GetDbConnection();
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                CREATE TABLE ""Projects"" (
+                    ""Id"" TEXT NOT NULL PRIMARY KEY,
+                    ""Name"" TEXT NOT NULL,
+                    ""SourceLanguage"" TEXT NOT NULL,
+                    ""TargetLanguage"" TEXT NOT NULL,
+                    ""Description"" TEXT NULL,
+                    ""RootDirectory"" TEXT NULL,
+                    ""CreatedAtUtc"" TEXT NOT NULL,
+                    ""UpdatedAtUtc"" TEXT NOT NULL
+                );
+                INSERT INTO ""Projects"" (""Id"", ""Name"", ""SourceLanguage"", ""TargetLanguage"", ""CreatedAtUtc"", ""UpdatedAtUtc"")
+                VALUES ('" + sampleProjectId + @"', 'Valuable User Project', 'ja', 'ar', '2026-01-01', '2026-01-01');
+            ";
+            await cmd.ExecuteNonQueryAsync();
+            await conn.CloseAsync();
+        }
+
+        // 2. Try to initialize
+        using (var migrationContext = new Dragonfly44DbContext(options))
+        {
+            var initializer = new SqliteDatabaseInitializer(
+                migrationContext,
+                Options.Create(new DatabaseOptions { ConnectionString = $"Data Source={dbPath}" }),
+                Options.Create(new StorageOptions { AppDataDirectory = Path.GetDirectoryName(dbPath)! }),
+                NullLogger<SqliteDatabaseInitializer>.Instance);
+
+            // Act & Assert
+            var act = async () => await initializer.InitializeAsync();
+            var ex = await act.Should().ThrowAsync<IncompatibleDatabaseSchemaException>();
+            ex.Which.Message.Should().Contain("Missing required tables");
+            ex.Which.Message.Should().Contain("Migration aborted to protect user data");
+
+            // Verify the existing user data was NOT deleted, altered, or overwritten
+            var conn = migrationContext.Database.GetDbConnection();
+            await conn.OpenAsync();
+            using var verifyCmd = conn.CreateCommand();
+            verifyCmd.CommandText = "SELECT Name FROM \"Projects\" WHERE \"Id\" = '" + sampleProjectId + "';";
+            var projectName = (string?)await verifyCmd.ExecuteScalarAsync();
+            await conn.CloseAsync();
+
+            projectName.Should().Be("Valuable User Project", "User data must be preserved intact when migration is rejected");
+        }
+    }
+
+    [Fact]
+    public async Task LegacyDatabase_WithMissingColumn_ShouldThrowIncompatibleDatabaseSchemaException_AndNeverModifyDatabase()
+    {
+        var dbPath = CreateTempDbPath();
+        var options = new DbContextOptionsBuilder<Dragonfly44DbContext>()
+            .UseSqlite($"Data Source={dbPath}", b => b.MigrationsAssembly(typeof(Dragonfly44DbContext).Assembly.FullName))
+            .Options;
+
+        // 1. Create all 7 tables, but omit RootDirectory from Projects
+        using (var rawContext = new Dragonfly44DbContext(options))
+        {
+            await rawContext.Database.EnsureCreatedAsync();
+
+            // Drop RootDirectory column by recreating Projects table without it
+            var conn = rawContext.Database.GetDbConnection();
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                PRAGMA foreign_keys = OFF;
+                CREATE TABLE ""Projects_Old"" (
+                    ""Id"" TEXT NOT NULL PRIMARY KEY,
+                    ""Name"" TEXT NOT NULL,
+                    ""SourceLanguage"" TEXT NOT NULL,
+                    ""TargetLanguage"" TEXT NOT NULL,
+                    ""Description"" TEXT NULL,
+                    ""CreatedAtUtc"" TEXT NOT NULL,
+                    ""UpdatedAtUtc"" TEXT NOT NULL
+                );
+                DROP TABLE ""Projects"";
+                ALTER TABLE ""Projects_Old"" RENAME TO ""Projects"";
+                PRAGMA foreign_keys = ON;
+            ";
+            await cmd.ExecuteNonQueryAsync();
+            await conn.CloseAsync();
+        }
+
+        // 2. Try to initialize
+        using (var migrationContext = new Dragonfly44DbContext(options))
+        {
+            var initializer = new SqliteDatabaseInitializer(
+                migrationContext,
+                Options.Create(new DatabaseOptions { ConnectionString = $"Data Source={dbPath}" }),
+                Options.Create(new StorageOptions { AppDataDirectory = Path.GetDirectoryName(dbPath)! }),
+                NullLogger<SqliteDatabaseInitializer>.Instance);
+
+            // Act & Assert
+            var act = async () => await initializer.InitializeAsync();
+            var ex = await act.Should().ThrowAsync<IncompatibleDatabaseSchemaException>();
+            ex.Which.Message.Should().Contain("Table 'Projects' is missing required columns");
+            ex.Which.Message.Should().Contain("RootDirectory");
         }
     }
 }

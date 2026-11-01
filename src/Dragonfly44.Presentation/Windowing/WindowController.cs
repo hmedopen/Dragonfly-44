@@ -15,6 +15,7 @@ public class WindowController : IWindowController
 {
     private readonly IWindowStateService _windowStateService;
     private readonly ILogger<WindowController> _logger;
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
 
     private Window? _window;
     private AppWindow? _appWindow;
@@ -22,6 +23,9 @@ public class WindowController : IWindowController
     private IntPtr _hwnd = IntPtr.Zero;
     private FrameworkElement? _dragElement;
     private WindowBounds _lastNormalBounds = new(100, 100, 1280, 800, WindowState.Normal, 1.0);
+
+    // Shutdown status: 0 = Running, 1 = ShuttingDown, 2 = Completed
+    private int _shutdownStatus = 0;
 
     public WindowState CurrentState { get; private set; } = WindowState.Normal;
     public WindowBounds CurrentBounds { get; private set; } = new(100, 100, 1280, 800);
@@ -77,10 +81,9 @@ public class WindowController : IWindowController
         // Update DPI
         UpdateDpiScale();
 
-        // Listen to window size, state, and closing changes
+        // Listen to window size, state, and closing lifecycle
         _appWindow.Changed += OnAppWindowChanged;
-        _appWindow.Closing += (sender, args) => SaveCurrentState();
-        _window.Closed += (sender, args) => SaveCurrentState();
+        _appWindow.Closing += OnAppWindowClosing;
 
         if (dragRegionElement != null)
         {
@@ -102,6 +105,55 @@ public class WindowController : IWindowController
         }
 
         _logger.LogInformation("WindowController attached to window with HWND {Hwnd}", _hwnd);
+    }
+
+    private async void OnAppWindowClosing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        // If shutdown has completed, allow clean exit without further intercept
+        if (_shutdownStatus == 2)
+        {
+            return;
+        }
+
+        // If shutdown is already in progress, cancel this event to prevent competing saves
+        if (Interlocked.CompareExchange(ref _shutdownStatus, 1, 0) != 0)
+        {
+            args.Cancel = true;
+            return;
+        }
+
+        // Synchronously cancel initial close so we can complete async state persistence
+        args.Cancel = true;
+        _logger.LogInformation("Controlled application shutdown initiated. Awaiting window state persistence...");
+
+        try
+        {
+            await SaveCurrentStateAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during shutdown window state save");
+        }
+        finally
+        {
+            _shutdownStatus = 2; // Mark shutdown persistence completed
+
+            // Close the window on the UI thread to finalize exit
+            if (_window != null)
+            {
+                _window.DispatcherQueue?.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        _window.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error finalizing window close");
+                    }
+                });
+            }
+        }
     }
 
     public void SetDragRegion(FrameworkElement dragRegionElement)
@@ -176,14 +228,34 @@ public class WindowController : IWindowController
         }
     }
 
+    public async Task SaveCurrentStateAsync()
+    {
+        // Guard against competing saves
+        await _saveLock.WaitAsync();
+        try
+        {
+            var stateToPersist = CurrentState == WindowState.Minimized ? WindowState.Normal : CurrentState;
+            var boundsToPersist = _lastNormalBounds with { State = stateToPersist, DpiScale = CurrentDpiScale };
+            _windowStateService.UpdateBounds(boundsToPersist.X, boundsToPersist.Y, boundsToPersist.Width, boundsToPersist.Height);
+            _windowStateService.UpdateState(stateToPersist);
+
+            await _windowStateService.SaveStateAsync();
+            _logger.LogInformation("Persisted window state successfully before exit: {@Bounds}", boundsToPersist);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save window state");
+            // Do not throw to avoid crashing application exit
+        }
+        finally
+        {
+            _saveLock.Release();
+        }
+    }
+
     public void SaveCurrentState()
     {
-        var stateToPersist = CurrentState == WindowState.Minimized ? WindowState.Normal : CurrentState;
-        var boundsToPersist = _lastNormalBounds with { State = stateToPersist, DpiScale = CurrentDpiScale };
-        _windowStateService.UpdateBounds(boundsToPersist.X, boundsToPersist.Y, boundsToPersist.Width, boundsToPersist.Height);
-        _windowStateService.UpdateState(stateToPersist);
-        _ = _windowStateService.SaveStateAsync();
-        _logger.LogInformation("Saved window state on shutdown/close: {@Bounds}", boundsToPersist);
+        _ = SaveCurrentStateAsync();
     }
 
     public void RestorePlacement(WindowBounds? bounds)
@@ -251,6 +323,28 @@ public class WindowController : IWindowController
         else
         {
             Maximize();
+        }
+    }
+
+    public async Task CloseAsync()
+    {
+        if (_window == null) return;
+
+        if (Interlocked.CompareExchange(ref _shutdownStatus, 1, 0) == 0)
+        {
+            try
+            {
+                await SaveCurrentStateAsync();
+            }
+            finally
+            {
+                _shutdownStatus = 2;
+                _window.Close();
+            }
+        }
+        else if (_shutdownStatus == 2)
+        {
+            _window.Close();
         }
     }
 

@@ -59,9 +59,16 @@ public class WindowStateService : IWindowStateService
 
     public async Task SaveStateAsync(CancellationToken cancellationToken = default)
     {
-        _settingsService.Set(WindowBoundsKey, CurrentBounds);
-        await _settingsService.SaveAsync(cancellationToken);
-        _logger.LogDebug("Saved window state: {@Bounds}", CurrentBounds);
+        try
+        {
+            _settingsService.Set(WindowBoundsKey, CurrentBounds);
+            await _settingsService.SaveAsync(cancellationToken);
+            _logger.LogDebug("Saved window state: {@Bounds}", CurrentBounds);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to persist window state to settings storage safely without crashing");
+        }
     }
 
     public Task<WindowBounds?> LoadStateAsync(CancellationToken cancellationToken = default)
