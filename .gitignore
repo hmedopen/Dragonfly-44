@@ -1,0 +1,23 @@
+# Build and output directories
+bin/
+obj/
+out/
+publish/
+
+# Visual Studio & VS Code
+.vs/
+*.user
+*.userosscache
+*.suo
+*.ide/
+.vscode/
+
+# Database files & logs
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Package cache
+packages/
+*.nupkg
