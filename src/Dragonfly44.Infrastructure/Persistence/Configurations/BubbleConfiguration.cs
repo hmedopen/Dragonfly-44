@@ -21,11 +21,21 @@ public class BubbleConfiguration : IEntityTypeConfiguration<Bubble>
             .HasConversion<int>()
             .IsRequired();
 
+        builder.Property(b => b.IsFlagged)
+            .HasDefaultValue(false);
+
+        builder.Property(b => b.LastManualTranslation)
+            .HasMaxLength(4000);
+
+        builder.Property(b => b.IsAiTranslated)
+            .HasDefaultValue(false);
+
         builder.HasOne(b => b.Character)
             .WithMany(ch => ch.Bubbles)
             .HasForeignKey(b => b.CharacterId)
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(b => new { b.PageId, b.ReadingOrderIndex });
+        builder.HasIndex(b => new { b.PageId, b.IsFlagged });
     }
 }

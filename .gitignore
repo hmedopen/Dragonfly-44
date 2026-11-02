@@ -3,6 +3,23 @@ bin/
 obj/
 out/
 publish/
+App/
+artifacts/
+runtimes/
+Microsoft.UI.Xaml/
+*.dll
+*.exe
+*.pdb
+*.pri
+*.xbf
+*.deps.json
+*.runtimeconfig.json
+*.winmd
+WindowsAppRuntime.png
+appsettings.json
+??-*/
+???-*/
+[a-z][a-z]/
 
 # Visual Studio & VS Code
 .vs/

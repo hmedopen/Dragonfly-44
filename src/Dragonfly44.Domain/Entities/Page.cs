@@ -7,7 +7,10 @@ public class Page
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid ChapterId { get; set; }
     public int PageNumber { get; set; }
+    public string OriginalFileName { get; set; } = string.Empty;
     public string ImageRelativePath { get; set; } = string.Empty;
+    public string FileFormat { get; set; } = string.Empty;
+    public long FileSizeBytes { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
     public PageStatus Status { get; set; } = PageStatus.Pending;

@@ -16,9 +16,13 @@ public class Bubble
     public int ReadingOrderIndex { get; set; }
     public double Confidence { get; set; } = 1.0;
     public BubbleShapeType ShapeType { get; set; } = BubbleShapeType.StandardSpeech;
+    public bool IsFlagged { get; set; } = false;
+    public string? LastManualTranslation { get; set; }
+    public bool IsAiTranslated { get; set; } = false;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     public Page? Page { get; set; }
     public Character? Character { get; set; }
+    public ICollection<TranslationHistoryEntry> TranslationHistory { get; set; } = new List<TranslationHistoryEntry>();
 }

@@ -12,6 +12,9 @@ public class Dragonfly44DbContext : DbContext
     public DbSet<Character> Characters => Set<Character>();
     public DbSet<GlossaryEntry> GlossaryEntries => Set<GlossaryEntry>();
     public DbSet<ChapterContext> ChapterContexts => Set<ChapterContext>();
+    public DbSet<Draft> Drafts => Set<Draft>();
+    public DbSet<DraftPage> DraftPages => Set<DraftPage>();
+    public DbSet<TranslationHistoryEntry> TranslationHistories => Set<TranslationHistoryEntry>();
 
     public Dragonfly44DbContext(DbContextOptions<Dragonfly44DbContext> options)
         : base(options)

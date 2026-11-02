@@ -8,12 +8,17 @@ namespace Dragonfly44.Application.Services;
 public class ProjectService : IProjectService
 {
     private readonly IProjectRepository _projectRepository;
+    private readonly IStorageService? _storageService;
     private readonly ILogger<ProjectService> _logger;
 
-    public ProjectService(IProjectRepository projectRepository, ILogger<ProjectService> logger)
+    public ProjectService(
+        IProjectRepository projectRepository,
+        ILogger<ProjectService> logger,
+        IStorageService? storageService = null)
     {
         _projectRepository = projectRepository;
         _logger = logger;
+        _storageService = storageService;
     }
 
     public async Task<Result<Project>> CreateProjectAsync(
@@ -58,13 +63,50 @@ public class ProjectService : IProjectService
     public Task<IReadOnlyList<Project>> GetAllProjectsAsync(CancellationToken cancellationToken = default) =>
         _projectRepository.GetAllAsync(cancellationToken);
 
+    public async Task<Result<Project>> RenameProjectAsync(Guid id, string newName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            return Result<Project>.Failure("Project name cannot be empty.");
+        }
+
+        try
+        {
+            var project = await _projectRepository.GetByIdAsync(id, cancellationToken);
+            if (project == null)
+            {
+                return Result<Project>.Failure($"Project with ID {id} was not found.");
+            }
+
+            project.Name = newName.Trim();
+            project.UpdatedAtUtc = DateTime.UtcNow;
+
+            await _projectRepository.UpdateAsync(project, cancellationToken);
+            await _projectRepository.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Renamed project {ProjectId} to '{ProjectName}'", id, project.Name);
+            return Result<Project>.Success(project);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to rename project {ProjectId}", id);
+            return Result<Project>.Failure($"Failed to rename project: {ex.Message}");
+        }
+    }
+
     public async Task<Result> DeleteProjectAsync(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
             await _projectRepository.DeleteAsync(id, cancellationToken);
             await _projectRepository.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("Deleted project {ProjectId}", id);
+
+            if (_storageService != null)
+            {
+                await _storageService.DeleteProjectStorageAsync(id, cancellationToken);
+            }
+
+            _logger.LogInformation("Deleted project {ProjectId} and associated storage", id);
             return Result.Success();
         }
         catch (Exception ex)

@@ -15,6 +15,20 @@ public class PageConfiguration : IEntityTypeConfiguration<Page>
             .IsRequired()
             .HasMaxLength(512);
 
+        builder.Property(p => p.OriginalFileName)
+            .IsRequired()
+            .HasMaxLength(512)
+            .HasDefaultValue(string.Empty);
+
+        builder.Property(p => p.FileFormat)
+            .IsRequired()
+            .HasMaxLength(32)
+            .HasDefaultValue(string.Empty);
+
+        builder.Property(p => p.FileSizeBytes)
+            .IsRequired()
+            .HasDefaultValue(0L);
+
         builder.Property(p => p.Status)
             .HasConversion<int>()
             .IsRequired();

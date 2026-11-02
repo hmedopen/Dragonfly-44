@@ -27,6 +27,8 @@ public class ProjectRepository : IProjectRepository
     public async Task<IReadOnlyList<Project>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         return await _dbContext.Projects
+            .Include(p => p.Chapters)
+                .ThenInclude(c => c.Pages)
             .OrderByDescending(p => p.UpdatedAtUtc)
             .ToListAsync(cancellationToken);
     }

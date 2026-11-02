@@ -7,8 +7,10 @@
     <RootNamespace>Dragonfly44.Presentation</RootNamespace>
     <AssemblyName>Dragonfly44.Presentation</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\dragonfly44.ico</ApplicationIcon>
     <Platforms>AnyCPU;x64</Platforms>
     <Platform>x64</Platform>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <PublishProfile>win-x64</PublishProfile>
     <UseWinUI>true</UseWinUI>
@@ -36,6 +38,16 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Content Include="Assets\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
+
+  <Target Name="CopyXbfToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <XbfFiles Include="$(TargetDir)**\*.xbf" />
+    </ItemGroup>
+    <Copy SourceFiles="@(XbfFiles)" DestinationFiles="@(XbfFiles->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

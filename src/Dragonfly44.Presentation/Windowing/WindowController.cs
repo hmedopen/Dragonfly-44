@@ -54,6 +54,12 @@ public class WindowController : IWindowController
         var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
 
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "dragonfly44.ico");
+        if (File.Exists(iconPath))
+        {
+            _appWindow.SetIcon(iconPath);
+        }
+
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             _presenter = presenter;

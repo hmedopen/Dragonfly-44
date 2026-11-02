@@ -12,6 +12,9 @@ namespace Dragonfly44.Infrastructure.Persistence;
 public class SqliteDatabaseInitializer : IDatabaseInitializer
 {
     private const string InitialMigrationId = "20261101213306_InitialCreate";
+    private const string Phase3MigrationId = "20261101223755_AddPhase3Entities";
+    private const string Phase5MigrationId = "20261102192218_AddBubbleIsFlagged";
+    private const string Phase7MigrationId = "20261102213000_AddTranslationHistory";
     private const string EfProductVersion = "8.0.10";
 
     public record ExpectedColumn(string Name, string Type, bool IsNullable, bool IsPrimaryKey);
@@ -376,7 +379,41 @@ public class SqliteDatabaseInitializer : IDatabaseInitializer
             // Validation passed 100%! Safely bootstrap __EFMigrationsHistory with the initial migration.
             _logger.LogInformation("Exhaustive legacy schema validation passed. Bootstrapping __EFMigrationsHistory to preserve existing data...");
 
+            var hasPhase3Columns = false;
+            using (var chkCmd = connection.CreateCommand())
+            {
+                chkCmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Pages') WHERE name='FileFormat';";
+                var cnt = Convert.ToInt64(await chkCmd.ExecuteScalarAsync(cancellationToken));
+                hasPhase3Columns = cnt > 0;
+            }
+
+            var hasPhase5Columns = false;
+            using (var chkCmd = connection.CreateCommand())
+            {
+                chkCmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Bubbles') WHERE name='IsFlagged';";
+                var cnt = Convert.ToInt64(await chkCmd.ExecuteScalarAsync(cancellationToken));
+                hasPhase5Columns = cnt > 0;
+            }
+
+            var hasPhase7Columns = false;
+            using (var chkCmd = connection.CreateCommand())
+            {
+                chkCmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Bubbles') WHERE name='LastManualTranslation';";
+                var cnt = Convert.ToInt64(await chkCmd.ExecuteScalarAsync(cancellationToken));
+                hasPhase7Columns = cnt > 0;
+            }
+
             using var createHistoryCmd = connection.CreateCommand();
+            var phase3Bootstrap = hasPhase3Columns
+                ? $"INSERT OR IGNORE INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ('{Phase3MigrationId}', '{EfProductVersion}');"
+                : string.Empty;
+            var phase5Bootstrap = hasPhase5Columns
+                ? $"INSERT OR IGNORE INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ('{Phase5MigrationId}', '{EfProductVersion}');"
+                : string.Empty;
+            var phase7Bootstrap = hasPhase7Columns
+                ? $"INSERT OR IGNORE INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ('{Phase7MigrationId}', '{EfProductVersion}');"
+                : string.Empty;
+
             createHistoryCmd.CommandText = $@"
                 CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
                     ""MigrationId"" TEXT NOT NULL CONSTRAINT ""PK___EFMigrationsHistory"" PRIMARY KEY,
@@ -384,6 +421,9 @@ public class SqliteDatabaseInitializer : IDatabaseInitializer
                 );
                 INSERT OR IGNORE INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
                 VALUES ('{InitialMigrationId}', '{EfProductVersion}');
+                {phase3Bootstrap}
+                {phase5Bootstrap}
+                {phase7Bootstrap}
             ";
             await createHistoryCmd.ExecuteNonQueryAsync(cancellationToken);
             _logger.LogInformation("Successfully bootstrapped initial migration into __EFMigrationsHistory. Existing user data preserved.");

@@ -12,195 +12,1242 @@
     mc:Ignorable="d"
     Title="Dragonfly 44">
 
-    <!-- Root Container Hosting Custom Chrome, Content, and Dialog Layer -->
+    <!-- Root Container Hosting Custom Chrome, Navigation, Content, and Dialog Layer -->
     <Grid x:Name="RootGrid" Background="{StaticResource DragonflyPlaceholderWindowBgBrush}">
         <Grid.RowDefinitions>
             <!-- Custom Title Bar Row -->
+            <RowDefinition Height="Auto" />
+            <!-- Section Navigation Bar Row -->
             <RowDefinition Height="Auto" />
             <!-- Main Content Area -->
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Workstream 1: Custom Title Bar (Non-client chrome replacement) -->
+        <!-- Workstream 1: Custom Title Bar -->
         <windowing:CustomTitleBar x:Name="TitleBarControl"
                                   Grid.Row="0"
                                   Title="{x:Bind ViewModel.AppTitle, Mode=OneWay}" />
 
-        <!-- Main Content Scrollable Viewport -->
-        <ScrollViewer Grid.Row="1"
-                      HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto">
-            <StackPanel Padding="24" Spacing="20" MaxWidth="1100" HorizontalAlignment="Left">
+        <!-- Phase 3 Navigation Bar -->
+        <Border Grid.Row="1"
+                Background="{StaticResource DragonflyPlaceholderTitleBarBgBrush}"
+                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="18,10">
+            <Grid>
+                <!-- Left: Back Button & Breadcrumbs -->
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <controls:CustomButton x:Name="NavBackBtn"
+                                           Content="← Back"
+                                           Click="OnNavBackClicked"
+                                           Visibility="{x:Bind ViewModel.CanGoBackVisibility, Mode=OneWay}" />
 
-                <!-- Header & Status Banner -->
-                <StackPanel Spacing="6">
-                    <TextBlock Text="Dragonfly 44 — Custom UI Architecture"
-                               FontSize="{StaticResource DragonflyPlaceholderFontSizeTitle}"
+                    <TextBlock Text="{x:Bind ViewModel.BreadcrumbText, Mode=OneWay}"
+                               FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
-                    <TextBlock Text="Phase 2 Infrastructure Verification: Custom Windowing, Component Architecture, Design Tokens, Win2D GPU Rendering, Input Routing, and Application Services."
-                               FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
-                               Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+                               Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}"
+                               VerticalAlignment="Center" />
                 </StackPanel>
 
-                <!-- Status Banner -->
-                <Border Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
-                        BorderBrush="{StaticResource DragonflyPlaceholderSuccessBrush}"
-                        BorderThickness="1"
-                        CornerRadius="{StaticResource DragonflyRadiusSmall}"
-                        Padding="14,10">
-                    <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
-                               Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}"
-                               FontWeight="Medium" />
-                </Border>
+                <!-- Right: Section Switcher & AI Settings -->
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <controls:CustomButton Content="Projects"
+                                           Click="OnNavProjectsClicked" />
+                    <controls:CustomButton Content="Drafts"
+                                           Click="OnNavDraftsClicked" />
+                    <controls:CustomButton Content="⚙ AI Settings"
+                                           Click="OnOpenAiSettingsClicked" />
+                </StackPanel>
+            </Grid>
+        </Border>
 
-                <!-- Workstream 4: Win2D Rendering Infrastructure Diagnostic -->
-                <rendering:RenderingDiagnosticSurface x:Name="Win2DSurfaceControl" Height="260" />
+        <!-- Main Content Area -->
+        <Grid Grid.Row="2">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="24" Spacing="24" MaxWidth="1100" HorizontalAlignment="Left">
+                    <!-- Status Banner -->
+                    <Border Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                            BorderBrush="{StaticResource DragonflyPlaceholderSuccessBrush}"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                            Padding="14,10">
+                        <TextBlock Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                                   Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}"
+                                   FontWeight="Medium" />
+                    </Border>
 
-                <!-- Grid of Technical Verification Cards -->
-                <Grid ColumnDefinitions="*,*">
-                    <Grid.ColumnSpacing>16</Grid.ColumnSpacing>
-
-                    <!-- Column 1: Windowing, DPI & Component Architecture -->
-                    <StackPanel Grid.Column="0" Spacing="16">
-
-                        <!-- Window & DPI Infrastructure Card -->
-                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
-                                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
-                                BorderThickness="{StaticResource DragonflyBorderThin}"
-                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
-                                Padding="16">
-                            <StackPanel Spacing="12">
-                                <TextBlock Text="Windowing &amp; DPI Infrastructure"
-                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
-                                           FontWeight="SemiBold"
+                    <!-- Section 1: Projects List -->
+                    <StackPanel Visibility="{x:Bind ViewModel.ProjectsSectionVisibility, Mode=OneWay}" Spacing="16">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <TextBlock Text="Projects"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeTitle}"
+                                           FontWeight="Bold"
                                            Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
-
-                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Window Bounds:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.WindowBoundsText, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
-
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Window State:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.WindowStateText, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
-
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Display Scale / DPI:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.WindowDpiText, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
-
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Multi-Monitor Clamping:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
-                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Active (MonitorFromPoint / Bounds Clamped)" Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}" />
-                                </Grid>
+                                <TextBlock Text="{x:Bind ViewModel.ProjectCount, Mode=OneWay}"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                           VerticalAlignment="Center" />
                             </StackPanel>
-                        </Border>
 
-                        <!-- Custom Component Architecture Card -->
-                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                            <controls:CustomButton Content="+ New Project"
+                                                   HorizontalAlignment="Right"
+                                                   Click="OnStartCreateProjectClicked" />
+                        </Grid>
+
+                        <!-- New Project Creation Form -->
+                        <Border Visibility="{x:Bind ViewModel.CreatingProjectVisibility, Mode=OneWay}"
+                                Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
                                 BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
                                 BorderThickness="{StaticResource DragonflyBorderThin}"
                                 CornerRadius="{StaticResource DragonflyRadiusMedium}"
                                 Padding="16">
                             <StackPanel Spacing="12">
-                                <TextBlock Text="Custom Component Architecture"
-                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
-                                <TextBlock Text="Custom controls decoupled from standard WinUI Fluent templates. Driven by VisualStateManager and centralized tokens."
-                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
-                                           Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}"
-                                           TextWrapping="Wrap" />
-
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <controls:CustomButton x:Name="NotificationBtn"
-                                                           Content="Trigger In-App Notification"
-                                                           Click="OnTriggerNotificationClicked" />
-
-                                    <controls:CustomButton x:Name="DialogBtn"
-                                                           Content="Trigger Modal Dialog"
-                                                           Click="OnTriggerDialogClicked" />
-                                </StackPanel>
-
-                                <TextBlock Text="{x:Bind ViewModel.LastActionMessage, Mode=OneWay}"
-                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
-                                           Foreground="{StaticResource DragonflyPlaceholderAccentBrush}" />
-                            </StackPanel>
-                        </Border>
-
-                    </StackPanel>
-
-                    <!-- Column 2: Input Routing & Phase 1 Foundation -->
-                    <StackPanel Grid.Column="1" Spacing="16">
-
-                        <!-- Input & Keyboard Routing Card -->
-                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
-                                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
-                                BorderThickness="{StaticResource DragonflyBorderThin}"
-                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
-                                Padding="16">
-                            <StackPanel Spacing="12">
-                                <TextBlock Text="Input &amp; Shortcut Management"
+                                <TextBlock Text="Create New Project"
                                            FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
                                            FontWeight="SemiBold"
                                            Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
 
-                                <TextBlock Text="Global shortcuts: Ctrl+N (Notification), Ctrl+D (Dialog), F11 (Toggle Maximize)."
-                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
-                                           Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
-
-                                <TextBlock Text="Text Editing Conflict Verification:"
-                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
-                                           FontWeight="Medium"
-                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
-
-                                <TextBox x:Name="TestInputBox"
-                                         PlaceholderText="Type here (typing 'n' or 'd' will NOT trigger shortcuts)..."
+                                <TextBox PlaceholderText="Project Name (e.g. Solo Leveling)"
+                                         Text="{x:Bind ViewModel.NewProjectName, Mode=TwoWay}"
                                          FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
 
-                                <TextBlock Text="Shortcuts are routed through IKeyboardShortcutService with text-editing focus suppression."
-                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
-                                           Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
-                                           TextWrapping="Wrap" />
+                                <TextBox PlaceholderText="Description (optional)"
+                                         Text="{x:Bind ViewModel.NewProjectDesc, Mode=TwoWay}"
+                                         FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                    <controls:CustomButton Content="Cancel"
+                                                           Click="OnCancelCreateProjectClicked" />
+                                    <controls:CustomButton Content="Create Project"
+                                                           Click="OnConfirmCreateProjectClicked" />
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 
-                        <!-- Preserved Phase 1 Foundation Diagnostics Card -->
+                        <!-- Projects Grid -->
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Projects}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ProjectItemViewModel">
+                                    <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                            BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                            BorderThickness="{StaticResource DragonflyBorderThin}"
+                                            CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                            Padding="16"
+                                            Margin="0,0,0,12">
+                                        <StackPanel Spacing="10">
+                                            <!-- Normal View -->
+                                            <Grid Visibility="{x:Bind NormalVisibility, Mode=OneWay}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Project Info -->
+                                                <StackPanel Grid.Column="0" Spacing="6">
+                                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                                        <TextBlock Text="{x:Bind Name, Mode=OneWay}"
+                                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                                                                CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                                                                Padding="6,2">
+                                                            <TextBlock Text="{x:Bind FormattedLanguages, Mode=OneWay}"
+                                                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                                       Foreground="{StaticResource DragonflyPlaceholderAccentBrush}" />
+                                                        </Border>
+                                                    </StackPanel>
+
+                                                    <TextBlock Text="{x:Bind Description, Mode=OneWay}"
+                                                               FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                                               Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+
+                                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                                        <TextBlock Text="{x:Bind ChapterCount, Mode=OneWay}"
+                                                                   Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}" />
+                                                        <TextBlock Text="chapters"
+                                                                   Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                                   Margin="-12,0,0,0" />
+                                                        <TextBlock Text="•" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                                        <TextBlock Text="{x:Bind PageCount, Mode=OneWay}"
+                                                                   Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}" />
+                                                        <TextBlock Text="pages"
+                                                                   Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                                   Margin="-12,0,0,0" />
+                                                        <TextBlock Text="•" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                                        <TextBlock Text="{x:Bind FormattedUpdated, Mode=OneWay}"
+                                                                   Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+
+                                                <!-- Actions -->
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <controls:CustomButton Content="Open Project" Click="OnOpenProjectClicked" />
+                                                    <controls:CustomButton Content="Rename" Click="OnStartRenameProjectClicked" />
+                                                    <controls:CustomButton Content="Delete" Click="OnDeleteProjectClicked" />
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- Inline Rename Edit Form -->
+                                            <StackPanel Spacing="8" Visibility="{x:Bind EditingVisibility, Mode=OneWay}">
+                                                <TextBox Text="{x:Bind EditName, Mode=TwoWay}"
+                                                         PlaceholderText="Enter new project name..."
+                                                         FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <controls:CustomButton Content="Save" Click="OnConfirmRenameProjectClicked" />
+                                                    <controls:CustomButton Content="Cancel" Click="OnCancelRenameProjectClicked" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- ============================================================= -->
+                    <!-- VIEW 2: PROJECT DETAIL (CHAPTERS) SECTION                     -->
+                    <!-- ============================================================= -->
+                    <StackPanel Spacing="16" Visibility="{x:Bind ViewModel.ProjectDetailSectionVisibility, Mode=OneWay}">
+                        <Grid>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{x:Bind ViewModel.SelectedProject.Name, Mode=OneWay}"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeTitle}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.SelectedProject.Description, Mode=OneWay}"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+                            </StackPanel>
+
+                            <controls:CustomButton Content="+ New Chapter"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center"
+                                                   Click="OnStartCreateChapterClicked" />
+                        </Grid>
+
+                        <!-- Inline New Chapter Card -->
+                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                BorderBrush="{StaticResource DragonflyPlaceholderAccentBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                Padding="16"
+                                Visibility="{x:Bind ViewModel.CreatingChapterVisibility, Mode=OneWay}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Create New Chapter"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                <Grid ColumnDefinitions="*,120" ColumnSpacing="10">
+                                    <TextBox Grid.Column="0"
+                                             PlaceholderText="Chapter Title (e.g., The Black Swordsman)..."
+                                             Text="{x:Bind ViewModel.NewChapterTitle, Mode=TwoWay}"
+                                             FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
+
+                                    <TextBox Grid.Column="1"
+                                             PlaceholderText="Number (e.g., 1)..."
+                                             Text="{x:Bind ViewModel.NewChapterNumberText, Mode=TwoWay}"
+                                             FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <controls:CustomButton Content="Create Chapter" Click="OnConfirmCreateChapterClicked" />
+                                    <controls:CustomButton Content="Cancel" Click="OnCancelCreateChapterClicked" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Chapters Empty State -->
+                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                Padding="32"
+                                HorizontalAlignment="Stretch"
+                                Visibility="{x:Bind ViewModel.ChaptersEmptyVisibility, Mode=OneWay}">
+                            <StackPanel Spacing="10" HorizontalAlignment="Center">
+                                <TextBlock Text="No Chapters in this Project"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                <TextBlock Text="Click '+ New Chapter' above to add a chapter and start importing manga pages."
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                           HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Chapters List -->
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Chapters}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ChapterItemViewModel">
+                                    <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                            BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                            BorderThickness="{StaticResource DragonflyBorderThin}"
+                                            CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                            Padding="16"
+                                            Margin="0,0,0,12">
+                                        <StackPanel Spacing="10">
+                                            <!-- Normal View -->
+                                            <Grid Visibility="{x:Bind NormalVisibility, Mode=OneWay}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Chapter Info -->
+                                                <StackPanel Grid.Column="0" Spacing="6">
+                                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                                        <TextBlock Text="{x:Bind FormattedTitle, Mode=OneWay}"
+                                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                                                                CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                                                                Padding="6,2">
+                                                            <TextBlock Text="{x:Bind FormattedStatus, Mode=OneWay}"
+                                                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                                       Foreground="{StaticResource DragonflyPlaceholderInfoBrush}" />
+                                                        </Border>
+                                                    </StackPanel>
+
+                                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                                        <TextBlock Text="{x:Bind FormattedPages, Mode=OneWay}"
+                                                                   Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}" />
+                                                        <TextBlock Text="•" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                                        <TextBlock Text="{x:Bind FormattedUpdated, Mode=OneWay}"
+                                                                   Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+
+                                                <!-- Actions -->
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <controls:CustomButton Content="Open Chapter" Click="OnOpenChapterClicked" />
+                                                    <controls:CustomButton Content="Rename" Click="OnStartRenameChapterClicked" />
+                                                    <controls:CustomButton Content="Delete" Click="OnDeleteChapterClicked" />
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- Inline Rename Edit Form -->
+                                            <StackPanel Spacing="8" Visibility="{x:Bind EditingVisibility, Mode=OneWay}">
+                                                <TextBox Text="{x:Bind EditName, Mode=TwoWay}"
+                                                         PlaceholderText="Enter new chapter title..."
+                                                         FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <controls:CustomButton Content="Save" Click="OnConfirmRenameChapterClicked" />
+                                                    <controls:CustomButton Content="Cancel" Click="OnCancelRenameChapterClicked" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- ============================================================= -->
+                    <!-- VIEW 3: CHAPTER DETAIL (PAGES & INGESTION) SECTION           -->
+                    <!-- ============================================================= -->
+                    <StackPanel Spacing="20" Visibility="{x:Bind ViewModel.ChapterDetailSectionVisibility, Mode=OneWay}">
+                        <!-- Chapter Header -->
+                        <Grid>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{x:Bind ViewModel.SelectedChapter.FormattedTitle, Mode=OneWay}"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeTitle}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.SelectedChapter.FormattedPages, Mode=OneWay}"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+                            </StackPanel>
+
+                            <controls:CustomButton Content="📖 Open Manga Canvas"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center"
+                                                   Click="OnOpenChapterCanvasClicked" />
+                        </Grid>
+
+                        <!-- Manga Folder Ingestion Tool Card -->
                         <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
                                 BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
                                 BorderThickness="{StaticResource DragonflyBorderThin}"
                                 CornerRadius="{StaticResource DragonflyRadiusMedium}"
-                                Padding="16">
-                            <StackPanel Spacing="12">
-                                <TextBlock Text="Phase 1 Foundation Diagnostics"
-                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                Padding="20">
+                            <StackPanel Spacing="14">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Manga Page Ingestion"
+                                               FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                    <TextBlock Text="Imports supported images (.png, .jpg, .jpeg, .webp) with natural numeric ordering. Original files are safely preserved in managed disk storage."
+                                               FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                               Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+                                </StackPanel>
 
-                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="DI Container:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.DiStatus, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                <!-- Folder Selection Row -->
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0"
+                                             PlaceholderText="Folder path containing manga images..."
+                                             Text="{x:Bind ViewModel.IngestFolderPath, Mode=TwoWay}"
+                                             FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Logging Pipeline:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.LoggingStatus, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                    <controls:CustomButton Grid.Column="1"
+                                                           Content="Browse Folder..."
+                                                           Click="OnBrowseChapterFolderClicked" />
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="SQLite Database:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.DatabaseStatus, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
-
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Database File:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
-                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{x:Bind ViewModel.DatabasePath, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" TextWrapping="Wrap" />
-
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Persisted Projects:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
-                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{x:Bind ViewModel.ProjectCount, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}" FontWeight="Bold" />
+                                    <controls:CustomButton Grid.Column="2"
+                                                           Content="Import Folder"
+                                                           Click="OnImportChapterFolderClicked" />
                                 </Grid>
+
+                                <!-- Drag-and-Drop Prompt -->
+                                <Border Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                                        BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                                        Padding="14,10">
+                                    <TextBlock Text="💡 Tip: Drag and drop a folder containing manga images directly onto this window to import."
+                                               FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                               Foreground="{StaticResource DragonflyPlaceholderAccentBrush}"
+                                               HorizontalAlignment="Center" />
+                                </Border>
+
+                                <!-- Ingestion Progress Banner -->
+                                <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.IngestingVisibility, Mode=OneWay}">
+                                    <Border Height="6" Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                                            CornerRadius="{StaticResource DragonflyRadiusSmall}">
+                                        <Border Background="{StaticResource DragonflyPlaceholderAccentBrush}"
+                                                CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                                                HorizontalAlignment="Left"
+                                                Width="{x:Bind ViewModel.IngestProgressPercent, Mode=OneWay}" />
+                                    </Border>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{x:Bind ViewModel.IngestStatusText, Mode=OneWay}"
+                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                   Foreground="{StaticResource DragonflyPlaceholderInfoBrush}" />
+
+                                        <controls:CustomButton Grid.Column="1"
+                                                               Content="Cancel Import"
+                                                               Click="OnCancelIngestionClicked" />
+                                    </Grid>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 
+                        <!-- Imported Pages Title -->
+                        <TextBlock Text="Imported Manga Pages"
+                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                        <!-- Pages Empty State -->
+                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                Padding="32"
+                                HorizontalAlignment="Stretch"
+                                Visibility="{x:Bind ViewModel.PagesEmptyVisibility, Mode=OneWay}">
+                            <StackPanel Spacing="10" HorizontalAlignment="Center">
+                                <TextBlock Text="No Pages Imported Yet"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                <TextBlock Text="Use the ingestion panel above or drag a manga folder into this window to import pages."
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                           HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Pages List -->
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Pages}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PageItemViewModel">
+                                    <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                            BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                            BorderThickness="{StaticResource DragonflyBorderThin}"
+                                            CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                                            Padding="14,10"
+                                            Margin="0,0,0,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="100" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="140" />
+                                                <ColumnDefinition Width="100" />
+                                                <ColumnDefinition Width="80" />
+                                                <ColumnDefinition Width="140" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Page Number -->
+                                            <Border Grid.Column="0"
+                                                    Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                                                    CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                                                    Padding="8,4"
+                                                    HorizontalAlignment="Left">
+                                                <TextBlock Text="{x:Bind FormattedPageNumber, Mode=OneWay}"
+                                                           FontWeight="Bold"
+                                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                           Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}" />
+                                            </Border>
+
+                                            <!-- Filename -->
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{x:Bind OriginalFileName, Mode=OneWay}"
+                                                       FontWeight="Medium"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+
+                                            <!-- Dimensions -->
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{x:Bind FormattedDimensions, Mode=OneWay}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                       Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+
+                                            <!-- Size -->
+                                            <TextBlock Grid.Column="3"
+                                                       Text="{x:Bind FormattedFileSize, Mode=OneWay}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                       Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+
+                                            <!-- Format -->
+                                            <Border Grid.Column="4"
+                                                    Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                                                    CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                                                    Padding="6,2"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind FileFormat, Mode=OneWay}"
+                                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                           Foreground="{StaticResource DragonflyPlaceholderAccentBrush}" />
+                                            </Border>
+
+                                            <!-- Imported Date -->
+                                            <TextBlock Grid.Column="5"
+                                                       Text="{x:Bind FormattedImported, Mode=OneWay}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                       Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                                       HorizontalAlignment="Right" />
+
+                                            <controls:CustomButton Grid.Column="6"
+                                                                   Content="View"
+                                                                   Margin="10,0,0,0"
+                                                                   Click="OnOpenPageInCanvasClicked" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
+
+                    <!-- ============================================================= -->
+                    <!-- VIEW 4: INDEPENDENT DRAFTS SECTION                            -->
+                    <!-- ============================================================= -->
+                    <StackPanel Spacing="16" Visibility="{x:Bind ViewModel.DraftsSectionVisibility, Mode=OneWay}">
+                        <Grid>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Independent Drafts"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeTitle}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                <TextBlock Text="Scratch translation drafts isolated from project hierarchies. Import manga pages freely for quick editing."
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+                            </StackPanel>
+
+                            <controls:CustomButton Content="+ New Draft"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center"
+                                                   Click="OnStartCreateDraftClicked" />
+                        </Grid>
+
+                        <!-- Inline New Draft Card -->
+                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                BorderBrush="{StaticResource DragonflyPlaceholderAccentBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                Padding="16"
+                                Visibility="{x:Bind ViewModel.CreatingDraftVisibility, Mode=OneWay}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Create Independent Draft"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                <TextBox PlaceholderText="Draft Name (e.g., Quick Translation 1)..."
+                                         Text="{x:Bind ViewModel.NewDraftName, Mode=TwoWay}"
+                                         FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
+
+                                <TextBox PlaceholderText="Optional notes/description..."
+                                         Text="{x:Bind ViewModel.NewDraftDesc, Mode=TwoWay}"
+                                         FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <controls:CustomButton Content="Create Draft" Click="OnConfirmCreateDraftClicked" />
+                                    <controls:CustomButton Content="Cancel" Click="OnCancelCreateDraftClicked" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Drafts Empty State -->
+                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                Padding="32"
+                                HorizontalAlignment="Stretch"
+                                Visibility="{x:Bind ViewModel.DraftsEmptyVisibility, Mode=OneWay}">
+                            <StackPanel Spacing="10" HorizontalAlignment="Center">
+                                <TextBlock Text="No Drafts Created"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                <TextBlock Text="Click '+ New Draft' above to create an independent draft workspace."
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                           HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Drafts List -->
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Drafts}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DraftItemViewModel">
+                                    <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                            BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                            BorderThickness="{StaticResource DragonflyBorderThin}"
+                                            CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                            Padding="16"
+                                            Margin="0,0,0,12">
+                                        <StackPanel Spacing="10">
+                                            <!-- Normal View -->
+                                            <Grid Visibility="{x:Bind NormalVisibility, Mode=OneWay}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Draft Info -->
+                                                <StackPanel Grid.Column="0" Spacing="6">
+                                                    <TextBlock Text="{x:Bind Name, Mode=OneWay}"
+                                                               FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                                    <TextBlock Text="{x:Bind Description, Mode=OneWay}"
+                                                               FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                                               Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+
+                                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                                        <TextBlock Text="{x:Bind FormattedPages, Mode=OneWay}"
+                                                                   Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}" />
+                                                        <TextBlock Text="•" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                                        <TextBlock Text="{x:Bind FormattedUpdated, Mode=OneWay}"
+                                                                   Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}" />
+                                                    </StackPanel>
+                                                </StackPanel>
+
+                                                <!-- Actions -->
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <controls:CustomButton Content="Open Draft" Click="OnOpenDraftClicked" />
+                                                    <controls:CustomButton Content="Rename" Click="OnStartRenameDraftClicked" />
+                                                    <controls:CustomButton Content="Delete" Click="OnDeleteDraftClicked" />
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- Inline Rename Edit Form -->
+                                            <StackPanel Spacing="8" Visibility="{x:Bind EditingVisibility, Mode=OneWay}">
+                                                <TextBox Text="{x:Bind EditName, Mode=TwoWay}"
+                                                         PlaceholderText="Enter new draft name..."
+                                                         FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <controls:CustomButton Content="Save" Click="OnConfirmRenameDraftClicked" />
+                                                    <controls:CustomButton Content="Cancel" Click="OnCancelRenameDraftClicked" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- ============================================================= -->
+                    <!-- VIEW 5: DRAFT DETAIL (PAGES & INGESTION) SECTION              -->
+                    <!-- ============================================================= -->
+                    <StackPanel Spacing="20" Visibility="{x:Bind ViewModel.DraftDetailSectionVisibility, Mode=OneWay}">
+                        <!-- Draft Header -->
+                        <Grid>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{x:Bind ViewModel.SelectedDraft.Name, Mode=OneWay}"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeTitle}"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.SelectedDraft.FormattedPages, Mode=OneWay}"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+                            </StackPanel>
+
+                            <controls:CustomButton Content="📖 Open Manga Canvas"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center"
+                                                   Click="OnOpenDraftCanvasClicked" />
+                        </Grid>
+
+                        <!-- Draft Ingestion Tool Card -->
+                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                BorderThickness="{StaticResource DragonflyBorderThin}"
+                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                Padding="20">
+                            <StackPanel Spacing="14">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Import Pages into Draft"
+                                               FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                    <TextBlock Text="Imports supported images (.png, .jpg, .jpeg, .webp) directly into this draft."
+                                               FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                               Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+                                </StackPanel>
+
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0"
+                                             PlaceholderText="Folder path containing manga images..."
+                                             Text="{x:Bind ViewModel.IngestFolderPath, Mode=TwoWay}"
+                                             FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}" />
+
+                                    <controls:CustomButton Grid.Column="1"
+                                                           Content="Browse Folder..."
+                                                           Click="OnBrowseDraftFolderClicked" />
+
+                                    <controls:CustomButton Grid.Column="2"
+                                                           Content="Import Folder"
+                                                           Click="OnImportDraftFolderClicked" />
+                                </Grid>
+
+                                <!-- Ingestion Progress Banner -->
+                                <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.IngestingVisibility, Mode=OneWay}">
+                                    <Border Height="6" Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                                            CornerRadius="{StaticResource DragonflyRadiusSmall}">
+                                        <Border Background="{StaticResource DragonflyPlaceholderAccentBrush}"
+                                                CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                                                HorizontalAlignment="Left"
+                                                Width="{x:Bind ViewModel.IngestProgressPercent, Mode=OneWay}" />
+                                    </Border>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{x:Bind ViewModel.IngestStatusText, Mode=OneWay}"
+                                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                   Foreground="{StaticResource DragonflyPlaceholderInfoBrush}" />
+
+                                        <controls:CustomButton Grid.Column="1"
+                                                               Content="Cancel Import"
+                                                               Click="OnCancelIngestionClicked" />
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Draft Pages List -->
+                        <TextBlock Text="Draft Pages"
+                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                        <!-- Draft Pages Empty State -->
+                        <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                                Padding="32"
+                                HorizontalAlignment="Stretch"
+                                Visibility="{x:Bind ViewModel.DraftPagesEmptyVisibility, Mode=OneWay}">
+                            <StackPanel Spacing="10" HorizontalAlignment="Center">
+                                <TextBlock Text="No Pages in this Draft"
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                <TextBlock Text="Import a folder above or drop one to add pages to this draft."
+                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                           Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                           HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Draft Pages ItemsControl -->
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.DraftPages}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DraftPageItemViewModel">
+                                    <Border Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                                            BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                                            BorderThickness="{StaticResource DragonflyBorderThin}"
+                                            CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                                            Padding="14,10"
+                                            Margin="0,0,0,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="100" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="140" />
+                                                <ColumnDefinition Width="100" />
+                                                <ColumnDefinition Width="80" />
+                                                <ColumnDefinition Width="140" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border Grid.Column="0"
+                                                    Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                                                    CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                                                    Padding="8,4"
+                                                    HorizontalAlignment="Left">
+                                                <TextBlock Text="{x:Bind FormattedPageNumber, Mode=OneWay}"
+                                                           FontWeight="Bold"
+                                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                           Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}" />
+                                            </Border>
+
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{x:Bind OriginalFileName, Mode=OneWay}"
+                                                       FontWeight="Medium"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{x:Bind FormattedDimensions, Mode=OneWay}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                       Foreground="{StaticResource DragonflyPlaceholderTextSecondaryBrush}" />
+
+                                            <TextBlock Grid.Column="3"
+                                                       Text="{x:Bind FormattedFileSize, Mode=OneWay}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                       Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+
+                                            <Border Grid.Column="4"
+                                                    Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                                                    CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                                                    Padding="6,2"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind FileFormat, Mode=OneWay}"
+                                                           FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                           Foreground="{StaticResource DragonflyPlaceholderAccentBrush}" />
+                                            </Border>
+
+                                            <TextBlock Grid.Column="5"
+                                                       Text="{x:Bind FormattedImported, Mode=OneWay}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                                       Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                                       HorizontalAlignment="Right" />
+
+                                            <controls:CustomButton Grid.Column="6"
+                                                                   Content="View"
+                                                                   Margin="10,0,0,0"
+                                                                   Click="OnOpenDraftPageInCanvasClicked" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- ============================================================= -->
+                    <!-- PRESERVED PHASE 1 & 2 TECHNICAL DIAGNOSTICS                   -->
+                    <!-- ============================================================= -->
+                    <Border Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                            BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                            Padding="16">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Technical Foundation Diagnostics (Phase 1 &amp; 2)"
+                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                            <!-- Workstream 4: Win2D Rendering Diagnostic -->
+                            <rendering:RenderingDiagnosticSurface x:Name="Win2DSurfaceControl" Height="140" />
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.ColumnSpacing>16</Grid.ColumnSpacing>
+
+                                <!-- Column 1: Window & Component Architecture -->
+                                <StackPanel Grid.Column="0" Spacing="8">
+                                    <Grid RowSpacing="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="140" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Window Bounds:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.WindowBoundsText, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Window State:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.WindowStateText, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Display Scale / DPI:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.WindowDpiText, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                                    </Grid>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
+                                        <controls:CustomButton Content="Test In-App Notification" Click="OnTriggerNotificationClicked" />
+                                        <controls:CustomButton Content="Test Modal Dialog" Click="OnTriggerDialogClicked" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Column 2: SQLite & Persistence -->
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <Grid RowSpacing="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="140" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="DI Container:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.DiStatus, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="SQLite Database:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.DatabaseStatus, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Total Projects:" Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.ProjectCount, Mode=OneWay}" Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}" FontWeight="Bold" />
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Phase 4: Hardware-Accelerated Manga Canvas View (Full Viewport) -->
+            <Grid Visibility="{x:Bind ViewModel.MangaCanvasSectionVisibility, Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Manga Canvas Toolbar -->
+                <Border Grid.Row="0"
+                        Background="{StaticResource DragonflyPlaceholderTitleBarBgBrush}"
+                        BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                        BorderThickness="0,0,0,1"
+                        Padding="16,8">
+                    <Grid>
+                        <!-- Left: Return to Chapter & Mode Toggle -->
+                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <controls:CustomButton Content="← Close Reader"
+                                                   Click="OnCloseCanvasClicked" />
+
+                            <Border Width="1" Height="20" Background="{StaticResource DragonflyPlaceholderBorderBrush}" Margin="4,0" />
+
+                            <controls:CustomButton Content="{x:Bind ViewModel.CanvasViewModel.ModeDisplayText, Mode=OneWay}"
+                                                   Click="OnToggleCanvasModeClicked" />
+                        </StackPanel>
+
+                        <!-- Center: Page Navigation (Page Mode) -->
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <controls:CustomButton Content="◀ Prev"
+                                                   Click="OnCanvasPrevPageClicked"
+                                                   IsEnabled="{x:Bind ViewModel.CanvasViewModel.CanGoPrevious, Mode=OneWay}" />
+
+                            <TextBlock Text="{x:Bind ViewModel.CanvasViewModel.PageIndicatorText, Mode=OneWay}"
+                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeBody}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0" />
+
+                            <controls:CustomButton Content="Next ▶"
+                                                   Click="OnCanvasNextPageClicked"
+                                                   IsEnabled="{x:Bind ViewModel.CanvasViewModel.CanGoNext, Mode=OneWay}" />
+                        </StackPanel>
+
+                        <!-- Right: Zoom Controls -->
+                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <controls:CustomButton Content="−"
+                                                   Click="OnCanvasZoomOutClicked" />
+
+                            <TextBlock Text="{x:Bind ViewModel.CanvasViewModel.ZoomPercentageText, Mode=OneWay}"
+                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                       Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}"
+                                       VerticalAlignment="Center"
+                                       Margin="4,0"
+                                       MinWidth="45"
+                                       TextAlignment="Center" />
+
+                            <controls:CustomButton Content="+"
+                                                   Click="OnCanvasZoomInClicked" />
+
+                            <controls:CustomButton Content="Fit Page"
+                                                   Click="OnCanvasFitPageClicked" />
+
+                            <controls:CustomButton Content="Fit Width"
+                                                   Click="OnCanvasFitWidthClicked" />
+
+                            <controls:CustomButton Content="100%"
+                                                   Click="OnCanvasResetZoomClicked" />
+
+                            <Border Width="1" Height="20" Background="{StaticResource DragonflyPlaceholderBorderBrush}" Margin="4,0" />
+
+                            <controls:CustomButton Content="💬 Dialogue Feed"
+                                                   Click="OnToggleDialogueFeedClicked" />
+
+                            <controls:CustomButton Content="⚙ AI Settings"
+                                                   Click="OnOpenAiSettingsClicked" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Translation Workspace: Split View with Canvas on Left, Dialogue Feed on Right -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <!-- Column 0: Hardware-accelerated Win2D Manga Canvas -->
+                        <ColumnDefinition Width="*" />
+                        <!-- Column 1: Dialogue Feed Side Panel -->
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Hardware-accelerated Win2D Manga Canvas -->
+                    <rendering:MangaCanvasControl x:Name="MangaCanvas"
+                                                  Grid.Column="0"
+                                                  ViewModel="{x:Bind ViewModel.CanvasViewModel, Mode=OneWay}" />
+
+                    <!-- Right: Phase 5 Dialogue Feed & Editing Panel -->
+                    <controls:DialogueFeedControl x:Name="DialogueFeed"
+                                                  Grid.Column="1"
+                                                  Width="440"
+                                                  ViewModel="{x:Bind ViewModel.DialogueFeedViewModel, Mode=OneWay}"
+                                                  Visibility="{x:Bind ViewModel.DialogueFeedVisibility, Mode=OneWay}" />
                 </Grid>
+            </Grid>
+        </Grid>
 
-            </StackPanel>
-        </ScrollViewer>
+        <!-- AI Settings Modal Dialog Layer -->
+        <Grid Grid.Row="0" Grid.RowSpan="3"
+              Visibility="{x:Bind ViewModel.AiSettingsVisibility, Mode=OneWay}"
+              Background="#80000000">
+            <!-- Modal Dialog Card -->
+            <Border HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Width="520"
+                    Background="{StaticResource DragonflyPlaceholderSurfaceBrush}"
+                    BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{StaticResource DragonflyRadiusMedium}"
+                    Padding="24">
+                <StackPanel Spacing="16">
+                    <!-- Title Bar -->
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="⚙" FontSize="18" VerticalAlignment="Center" />
+                            <TextBlock Text="AI Translation Settings"
+                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSubhead}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource DragonflyPlaceholderTextPrimaryBrush}" />
+                        </StackPanel>
+                        <controls:CustomButton Content="✕"
+                                               Click="OnCloseAiSettingsClicked"
+                                               HorizontalAlignment="Right"
+                                               Width="28" Height="28" Padding="0" />
+                    </Grid>
 
-        <!-- Workstream 2 & 6: Modal Dialog Host Presentation Layer -->
+                    <!-- Provider & Model Selection -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <!-- Provider -->
+                        <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,8,0">
+                            <TextBlock Text="AI Provider"
+                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                            <ComboBox ItemsSource="{x:Bind ViewModel.AiSettingsViewModel.AvailableProviders, Mode=OneWay}"
+                                      SelectedItem="{x:Bind ViewModel.AiSettingsViewModel.SelectedProvider, Mode=TwoWay}"
+                                      HorizontalAlignment="Stretch" />
+                        </StackPanel>
+
+                        <!-- Model -->
+                        <StackPanel Grid.Column="1" Spacing="6" Margin="8,0,0,0">
+                            <TextBlock Text="Model"
+                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                            <ComboBox ItemsSource="{x:Bind ViewModel.AiSettingsViewModel.AvailableModels, Mode=OneWay}"
+                                      SelectedItem="{x:Bind ViewModel.AiSettingsViewModel.SelectedModel, Mode=TwoWay}"
+                                      DisplayMemberPath="DisplayName"
+                                      HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- API Key & Secure DPAPI Storage -->
+                    <StackPanel Spacing="6">
+                        <Grid>
+                            <TextBlock Text="API Key"
+                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                            <TextBlock Text="{x:Bind ViewModel.AiSettingsViewModel.ApiKeyStatusText, Mode=OneWay}"
+                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                       Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}"
+                                       HorizontalAlignment="Right" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{x:Bind ViewModel.AiSettingsViewModel.ApiKeyInput, Mode=TwoWay}"
+                                     PlaceholderText="Enter new API key (sk-...)..."
+                                     HorizontalAlignment="Stretch" />
+                            <controls:CustomButton Grid.Column="1"
+                                                   Content="Delete Key"
+                                                   Click="OnDeleteApiKeyClicked"
+                                                   IsEnabled="{x:Bind ViewModel.AiSettingsViewModel.CanDeleteApiKey, Mode=OneWay}"
+                                                   Margin="8,0,0,0"
+                                                   Padding="10,4" />
+                        </Grid>
+                        <TextBlock Text="API keys are securely encrypted using Windows DPAPI and never saved to logs or SQLite database."
+                                   FontSize="10"
+                                   Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                    </StackPanel>
+
+                    <!-- Advanced Parameters: Temperature & Max Tokens -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,8,0">
+                            <TextBlock Text="Temperature (0.0 - 1.0)"
+                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                       Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                            <TextBox Text="{x:Bind ViewModel.AiSettingsViewModel.TemperatureText, Mode=TwoWay}"
+                                     PlaceholderText="0.30" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6" Margin="8,0,0,0">
+                            <TextBlock Text="Max Output Tokens"
+                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                       Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                            <TextBox Text="{x:Bind ViewModel.AiSettingsViewModel.MaxTokensText, Mode=TwoWay}"
+                                     PlaceholderText="1024" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Custom Endpoint (Optional) -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Custom Endpoint URL (Optional)"
+                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                   Foreground="{StaticResource DragonflyPlaceholderTextMutedBrush}" />
+                        <TextBox Text="{x:Bind ViewModel.AiSettingsViewModel.CustomEndpoint, Mode=TwoWay}"
+                                 PlaceholderText="https://api.openai.com/v1 (or proxy/local endpoint)" />
+                    </StackPanel>
+
+                    <!-- Test Connection & Status -->
+                    <Border Background="{StaticResource DragonflyPlaceholderSurfaceSubtleBrush}"
+                            BorderBrush="{StaticResource DragonflyPlaceholderBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource DragonflyRadiusSmall}"
+                            Padding="12,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <controls:CustomButton Grid.Column="0"
+                                                   Content="⚡ Test Connection"
+                                                   Click="OnTestConnectionClicked"
+                                                   IsEnabled="{x:Bind ViewModel.AiSettingsViewModel.CanTestConnection, Mode=OneWay}"
+                                                   Padding="12,4" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{x:Bind ViewModel.AiSettingsViewModel.ConnectionTestResult, Mode=OneWay}"
+                                       VerticalAlignment="Center"
+                                       Margin="12,0,0,0"
+                                       FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                       TextWrapping="Wrap" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Action Buttons -->
+                    <Grid Margin="0,8,0,0">
+                        <TextBlock Text="{x:Bind ViewModel.AiSettingsViewModel.StatusMessage, Mode=OneWay}"
+                                   VerticalAlignment="Center"
+                                   FontSize="{StaticResource DragonflyPlaceholderFontSizeSmall}"
+                                   Foreground="{StaticResource DragonflyPlaceholderSuccessBrush}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                            <controls:CustomButton Content="Cancel"
+                                                   Click="OnCloseAiSettingsClicked"
+                                                   Padding="16,6" />
+                            <controls:CustomButton Content="Save Settings"
+                                                   Click="OnSaveAiSettingsClicked"
+                                                   Background="{StaticResource DragonflyPlaceholderAccentBrush}"
+                                                   Padding="16,6" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Modal Dialog Host Presentation Layer -->
         <controls:CustomDialogHost x:Name="DialogHostControl"
                                    Grid.Row="0"
-                                   Grid.RowSpan="2" />
+                                   Grid.RowSpan="3" />
     </Grid>
 </Window>

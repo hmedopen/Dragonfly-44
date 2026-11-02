@@ -147,7 +147,11 @@ public class DialogConcurrencyTests
         // Release one by one and assert strict sequential ordering
         for (int i = 0; i < 5; i++)
         {
-            await Task.Yield();
+            var timeout = DateTime.UtcNow.AddSeconds(2);
+            while (presenter.PresentedDialogs.Count < i + 1 && DateTime.UtcNow < timeout)
+            {
+                await Task.Delay(10);
+            }
             presenter.PresentedDialogs.Count.Should().Be(i + 1, $"Dialog {i + 1} should be displayed next");
             presenter.PresentedDialogs[i].Title.Should().Be($"Title {i + 1}");
 

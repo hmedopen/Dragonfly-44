@@ -51,6 +51,10 @@ public class DragDropCoordinator : IDragDropService
                                 filePaths.Add(file.Path);
                             }
                         }
+                        else if (item is StorageFolder folder)
+                        {
+                            filePaths.Add(folder.Path);
+                        }
                     }
 
                     if (filePaths.Count > 0)
